@@ -11,7 +11,24 @@ export const supabase: SupabaseClient | null =
 
 export const isSupabaseMode = supabase !== null
 
-const TENANT_LOCALE = 'local'
+// In modalità Supabase, tenant_id = user UID. In locale, = 'local'.
+function getTenantId(): string {
+  if (supabase) {
+    const user = supabase.auth.getUser()
+    // sincrono wrapper: getUser è async, ma per insert/update usiamo il valore cached
+    return supabase.auth.getSession().then((r) => r.data.session?.user?.id ?? 'local').catch(() => 'local') as unknown as string
+  }
+  return 'local'
+}
+
+// tenant_id cached dall'auth context per evitare async in dbInsert
+let cachedTenantId = 'local'
+export function setTenantId(id: string) {
+  cachedTenantId = id
+}
+export function getActiveTenantId(): string {
+  return cachedTenantId
+}
 
 function lsKey(table: string) {
   return `nf_db_${table}`
@@ -31,7 +48,7 @@ function lsWrite<T>(table: string, rows: T[]) {
 
 export async function dbList<T extends { id: string }>(table: string): Promise<T[]> {
   if (supabase) {
-    const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false })
+    const { data, error } = await supabase.from(table).select('*').eq('tenant_id', getActiveTenantId()).order('created_at', { ascending: false })
     if (error) throw error
     return (data || []) as T[]
   }
@@ -42,7 +59,7 @@ export async function dbInsert<T extends { id?: string }>(table: string, row: Pa
   const record = {
     ...row,
     id: row.id || crypto.randomUUID(),
-    tenant_id: TENANT_LOCALE,
+    tenant_id: getActiveTenantId(),
     created_at: new Date().toISOString(),
   } as unknown as T & { id: string }
   if (supabase) {
