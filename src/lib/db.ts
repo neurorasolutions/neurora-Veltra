@@ -11,17 +11,9 @@ export const supabase: SupabaseClient | null =
 
 export const isSupabaseMode = supabase !== null
 
-// In modalità Supabase, tenant_id = user UID. In locale, = 'local'.
-function getTenantId(): string {
-  if (supabase) {
-    const user = supabase.auth.getUser()
-    // sincrono wrapper: getUser è async, ma per insert/update usiamo il valore cached
-    return supabase.auth.getSession().then((r) => r.data.session?.user?.id ?? 'local').catch(() => 'local') as unknown as string
-  }
-  return 'local'
-}
-
-// tenant_id cached dall'auth context per evitare async in dbInsert
+// tenant_id: in modalita Supabase = user UID (set dall'auth context),
+// in modalita locale = 'local'. Si usa il valore cached per evitare
+// chiamate async dentro dbInsert/dbUpdate.
 let cachedTenantId = 'local'
 export function setTenantId(id: string) {
   cachedTenantId = id

@@ -24,6 +24,47 @@ export default function Impostazioni() {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [mostraNormativi, setMostraNormativi] = useState(false)
+
+  function esportaDati() {
+    const tabelle = ['profili_fiscali', 'clienti', 'fatture', 'f24_generati', 'scadenze', 'dichiarazioni', 'chat_messages']
+    const data: Record<string, unknown> = { exportDate: new Date().toISOString(), version: 1 }
+    for (const t of tabelle) {
+      try {
+        data[t] = JSON.parse(localStorage.getItem(`nf_db_${t}`) || '[]')
+      } catch {
+        data[t] = []
+      }
+    }
+    data['settings'] = JSON.parse(localStorage.getItem('nf_settings') || '{}')
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `neurora-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setMsg('Backup esportato.')
+  }
+
+  function ripristinaDati(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result as string) as Record<string, unknown>
+        const tabelle = ['profili_fiscali', 'clienti', 'fatture', 'f24_generati', 'scadenze', 'dichiarazioni', 'chat_messages']
+        for (const t of tabelle) {
+          if (data[t]) localStorage.setItem(`nf_db_${t}`, JSON.stringify(data[t]))
+        }
+        if (data['settings']) localStorage.setItem('nf_settings', JSON.stringify(data['settings']))
+        setMsg('Ripristino completato. Ricarica la pagina per vedere i dati.')
+      } catch {
+        setMsg('File non valido.')
+      }
+    }
+    reader.readAsText(file)
+  }
   // Lista modelli live di OpenRouter + modalità "scrivi a mano"
   const [orModels, setOrModels] = useState<ModelOption[]>([])
   const [orLoading, setOrLoading] = useState(false)
@@ -365,6 +406,22 @@ export default function Impostazioni() {
           <code>VITE_SUPABASE_ANON_KEY</code> nel file <code>.env</code> e riavvia l'app. Le tabelle coincidono, quindi
           il passaggio non richiede modifiche al codice.
         </p>
+      </section>
+
+      {/* ————— Backup dati ————— */}
+      <section className="card space-y-3">
+        <h2 className="font-bold">Backup e ripristino dati</h2>
+        <p className="text-xs text-slate-400">
+          Esporta tutti i dati in un file JSON (utile in modalit\u00e0 locale per non perdere i dati se svuoti il browser).
+          Il ripristino sovrascrive i dati attuali con quelli del file.
+        </p>
+        <div className="flex gap-2">
+          <button className="btn-secondary" onClick={esportaDati}>\u2193 Esporta JSON</button>
+          <label className="btn-secondary cursor-pointer">
+            \u2191 Ripristina
+            <input type="file" accept=".json" className="hidden" onChange={ripristinaDati} />
+          </label>
+        </div>
       </section>
 
       {/* ————— Dati normativi ————— */}

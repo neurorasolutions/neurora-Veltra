@@ -13,6 +13,20 @@ npm run dev
 
 L'app parte su `http://localhost:5173` in **modalità locale**: tutti i dati (profilo, clienti, fatture, F24, dichiarazioni, chat) vivono nel browser (localStorage). Nessuna chiave è richiesta per iniziare a lavorare: fatture, previsione tasse, F24, bollo, ravvedimento e quadro LM funzionano subito, perché i motori di calcolo sono deterministici e locali (D-005).
 
+## Autenticazione (Supabase Auth)
+
+Se Supabase \u00e8 configurato (env vars attive), l'app richiede login: Google OAuth o email/password.
+Senza Supabase, l'app funziona in modalit\u00e0 locale senza auth (dati nel browser).
+
+Per attivare l'auth:
+1. Crea un progetto Supabase (vedi sopra)
+2. Esegui entrambe le migrazioni SQL (`001_schema.sql` + `002_auth_rls.sql`)
+3. In Supabase \u2192 Authentication \u2192 Providers: attiva Email e Google
+4. Aggiungi le env vars su Vercel: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`
+5. Per Google: crea un OAuth client su Google Cloud Console con redirect URI `https://TUO-PROGETTO.supabase.co/auth/v1/callback`
+
+---
+
 ## Integrazioni esterne (chiavi inserite dall'utente)
 
 Tutte si configurano nella pagina **Impostazioni** dell'app. Senza chiavi l'app funziona comunque: le funzioni esterne restano disabilitate con istruzioni su come attivarle.
@@ -51,6 +65,11 @@ supabase/
 - **Multi-tenant-ready** (D-001): `tenant_id` ovunque nello schema SQL; il passaggio a SaaS è uno switch.
 - **La piattaforma non trasmette la dichiarazione** (D-002): pre-compila il Quadro LM e guida l'invio via Fisconline.
 - **F24: generazione + istruzioni** (D-003): il pagamento avviene via home banking / F24 web.
+
+## Backup dati
+
+In modalit\u00e0 locale: Impostazioni \u2192 "Esporta JSON" per scaricare un backup completo.
+Il ripristino sovrascrive i dati locali con il file selezionato.
 
 ## Comandi
 

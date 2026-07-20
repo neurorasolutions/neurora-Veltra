@@ -22,6 +22,7 @@ export default function Fatture() {
   const [showForm, setShowForm] = useState(false)
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showPassiva, setShowPassiva] = useState(false)
 
   const anno = new Date().getFullYear()
   const arubaOk = isArubaConfigured(loadSettings())
@@ -231,9 +232,43 @@ export default function Fatture() {
         </table>
       </section>
 
-      {passive.length > 0 && (
-        <section className="card overflow-x-auto">
-          <h2 className="font-bold mb-3">Fatture passive ricevute ({passive.length})</h2>
+      {/* ————— Fatture passive ————— */}
+      <section className="card overflow-x-auto">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold">Fatture passive ricevute ({passive.length})</h2>
+          <button className="btn-secondary text-xs" onClick={() => setShowPassiva(!showPassiva)}>
+            {showPassiva ? 'Chiudi' : '+ Aggiungi fattura ricevuta'}
+          </button>
+        </div>
+        {showPassiva && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const fd = new FormData(e.currentTarget)
+              const num = String(fd.get('p_numero'))
+              const dataDoc = String(fd.get('p_data'))
+              const forn = String(fd.get('p_fornitore'))
+              const imp = Number(fd.get('p_importo'))
+              if (num && dataDoc && forn && imp) {
+                insert({
+                  numero: num, data: dataDoc, tipo: 'passiva',
+                  cliente_id: '', cliente_denominazione: forn,
+                  importo: imp, descrizione: String(fd.get('p_desc') || ''),
+                  ateco_codice: '', bollo: false, stato_sdi: 'ricevuta',
+                })
+                setShowPassiva(false)
+              }
+            }}
+            className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4 p-4 bg-slate-50 rounded-xl"
+          >
+            <input className="input" name="p_numero" placeholder="N. fattura" required />
+            <input className="input" type="date" name="p_data" required />
+            <input className="input" name="p_fornitore" placeholder="Fornitore" required />
+            <input className="input num" type="number" step="0.01" name="p_importo" placeholder="Importo" required />
+            <button className="btn-primary" type="submit">Salva</button>
+          </form>
+        )}
+        {passive.length > 0 && (
           <table className="w-full">
             <thead>
               <tr>
@@ -241,6 +276,7 @@ export default function Fatture() {
                 <th className="th">Data</th>
                 <th className="th">Fornitore</th>
                 <th className="th">Importo</th>
+                <th className="th">Azioni</th>
               </tr>
             </thead>
             <tbody>
@@ -250,15 +286,20 @@ export default function Fatture() {
                   <td className="td num">{new Date(f.data).toLocaleDateString('it-IT')}</td>
                   <td className="td">{f.cliente_denominazione}</td>
                   <td className="td num">{fmtEuro(f.importo)}</td>
+                  <td className="td"><button className="btn-danger !px-2 !py-1 text-xs" onClick={() => remove(f.id)}>Elimina</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-slate-400 mt-2">
-            Nel forfettario i costi non sono deducibili analiticamente: le passive sono tracciate solo per archivio.
+        ) || (
+          <p className="text-sm text-slate-400">
+            Nessuna fattura passiva. Aggiungile per tenere traccia delle fatture ricevute (nel forfettario non sono deducibili, ma restano in archivio).
           </p>
-        </section>
-      )}
+        )}
+        <p className="text-xs text-slate-400 mt-2">
+          Nel forfettario i costi non sono deducibili analiticamente: le passive sono tracciate solo per archivio.
+        </p>
+      </section>
     </div>
   )
 }

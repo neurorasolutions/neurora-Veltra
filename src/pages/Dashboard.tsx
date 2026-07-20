@@ -4,12 +4,13 @@ import { Fattura, Scadenza } from '../types'
 import { calcolaPrevisione, fmtEuro, fmtPct } from '../engine/fiscale'
 
 export default function Dashboard() {
-  const { profilo } = useProfilo()
-  const { rows: fatture } = useTable<Fattura>('fatture')
-  const { rows: scadenze } = useTable<Scadenza>('scadenze')
+  const { profilo, loading: profLoading } = useProfilo()
+  const { rows: fatture, loading: fattLoading } = useTable<Fattura>('fatture')
+  const { rows: scadenze, error: scadErr } = useTable<Scadenza>('scadenze')
 
   const anno = new Date().getFullYear()
   const prev = profilo ? calcolaPrevisione(fatture, profilo, anno) : null
+  if (profLoading || fattLoading) return <div className="text-slate-400 animate-pulse pt-20 text-center">Caricamento…</div>
 
   const prossimeScadenze = scadenze
     .filter((s) => s.stato !== 'completata' && new Date(s.data) >= new Date(new Date().toDateString()))
@@ -21,6 +22,9 @@ export default function Dashboard() {
     .sort((a, b) => b.data.localeCompare(a.data))
     .slice(0, 5)
 
+  const passive = fatture.filter((f) => f.tipo === 'passiva').length
+  const fattureAnno = fatture.filter((f) => f.tipo === 'attiva' && new Date(f.data).getFullYear() === anno).length
+
   return (
     <div className="space-y-6">
       <header>
@@ -30,6 +34,9 @@ export default function Dashboard() {
         </p>
       </header>
 
+      {scadErr && (
+        <div className="card border-rose-200 bg-rose-50 text-rose-600 text-sm">Errore scadenze: {scadErr}</div>
+      )}
       {prev?.alertEsclusione && (
         <div className="card border-rose-300 bg-rose-50 text-rose-700 text-sm font-semibold">
           ⚠ Ricavi oltre 100.000 €: esclusione immediata dal regime forfettario (art. 1 c.57 L.190/2014). Contatta un commercialista.
@@ -47,11 +54,11 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Stat label={`Ricavi ${anno}`} value={fmtEuro(prev?.ricaviTotali ?? 0)} />
-        <Stat label="Imposta sostitutiva stimata" value={fmtEuro(prev?.impostaSostitutiva ?? 0)} />
-        <Stat label="Contributi INPS stimati" value={fmtEuro(prev?.contributiInpsStimati ?? 0)} />
+        <Stat label={`Ricavi ${anno}`} value={fmtEuro(prev?.ricaviTotali ?? 0)} sub={`${fattureAnno} fatture`} />
+        <Stat label="Imposta sostitutiva" value={fmtEuro(prev?.impostaSostitutiva ?? 0)} />
+        <Stat label="Contributi INPS" value={fmtEuro(prev?.contributiInpsStimati ?? 0)} />
         <Stat
-          label="Totale tasse stimato"
+          label="Totale tasse"
           value={fmtEuro(prev?.totaleDovutoStimato ?? 0)}
           sub={prev && prev.ricaviTotali > 0 ? `${fmtPct(prev.aliquotaEffettiva)} dei ricavi` : undefined}
           highlight
@@ -71,6 +78,12 @@ export default function Dashboard() {
             style={{ width: `${(prev?.percentualeSoglia ?? 0) * 100}%` }}
           />
         </div>
+      </div>
+
+      {/* Grafico ricavi mensili */}
+      <div className="card">
+        <h2 className="font-bold mb-3">Ricavi per mese ({anno})</h2>
+        <GraficoMesi fatture={fatture.filter((f) => f.tipo === 'attiva' && new Date(f.data).getFullYear() === anno)} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -120,6 +133,30 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function GraficoMesi({ fatture }: { fatture: Fattura[] }) {
+  const mesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
+  const perMese = Array.from({ length: 12 }, () => 0)
+  for (const f of fatture) {
+    const m = new Date(f.data).getMonth()
+    perMese[m] += f.importo
+  }
+  const max = Math.max(...perMese, 1)
+  return (
+    <div className="flex items-end gap-1 h-32">
+      {perMese.map((v, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+          <div
+            className="w-full rounded-t bg-neurora-gradient min-h-[2px]"
+            style={{ height: `${(v / max) * 100}%` }}
+            title={fmtEuro(v)}
+          />
+          <span className="text-[10px] text-slate-400">{mesi[i]}</span>
+        </div>
+      ))}
     </div>
   )
 }

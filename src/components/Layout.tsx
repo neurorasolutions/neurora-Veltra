@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { isSupabaseMode } from '../lib/db'
 import { useAuth } from '../lib/auth-context'
@@ -39,15 +39,34 @@ function UserBadge() {
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false)
   return (
     <div className="min-h-screen flex">
-      <aside className="no-print w-60 shrink-0 border-r border-slate-200 bg-white flex flex-col">
+      {/* Mobile hamburger */}
+      <button
+        className="lg:hidden fixed top-4 left-4 z-50 bg-white rounded-xl shadow-md p-2 border border-slate-200"
+        onClick={() => setOpen(!open)}
+        aria-label="Menu"
+      >
+        {open ? '✕' : '☰'}
+      </button>
+
+      {/* Overlay per mobile */}
+      {open && (
+        <div className="lg:hidden fixed inset-0 bg-slate-900/30 z-30" onClick={() => setOpen(false)} />
+      )}
+
+      <aside className={`
+        no-print w-60 shrink-0 border-r border-slate-200 bg-white flex flex-col fixed lg:relative
+        inset-y-0 left-0 z-40 transition-transform duration-200
+        ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         <div className="p-5 border-b border-slate-100">
           <div className="text-lg font-extrabold bg-neurora-gradient bg-clip-text text-transparent">
             Neurora Fiscale
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">
-            Regime forfettario · {isSupabaseMode ? 'Supabase' : 'modalità locale'}
+            Regime forfettario · {isSupabaseMode ? 'Supabase' : 'modalit\u00e0 locale'}
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
@@ -56,6 +75,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               key={n.to}
               to={n.to}
               end={n.to === '/'}
+              onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
@@ -76,7 +96,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </aside>
-      <main className="flex-1 p-6 lg:p-8 max-w-6xl w-full mx-auto">{children}</main>
+      <main className="flex-1 p-6 pt-16 lg:p-8 lg:pt-6 max-w-6xl w-full mx-auto">{children}</main>
     </div>
   )
 }

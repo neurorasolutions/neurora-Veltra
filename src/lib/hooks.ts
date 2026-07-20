@@ -5,11 +5,15 @@ import { ProfiloFiscale } from '../types'
 export function useTable<T extends { id: string }>(table: string) {
   const [rows, setRows] = useState<T[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       setRows(await dbList<T>(table))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Errore di caricamento')
     } finally {
       setLoading(false)
     }
@@ -44,7 +48,7 @@ export function useTable<T extends { id: string }>(table: string) {
     [table, reload]
   )
 
-  return { rows, loading, reload, insert, update, remove }
+  return { rows, loading, error, reload, insert, update, remove }
 }
 
 // Profilo fiscale di default (dati founder, §2.2 documento master).

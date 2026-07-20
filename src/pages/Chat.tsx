@@ -97,14 +97,25 @@ F24 recenti:\n${f24 || '- nessuno'}`
 
       <div className="flex-1 overflow-y-auto card space-y-4">
         {messaggi.length === 0 && (
-          <div className="text-sm text-slate-400 space-y-2">
-            <p>Chiedi qualcosa, ad esempio:</p>
-            <ul className="list-disc ml-5 space-y-1">
-              <li>Quanto devo accantonare per le tasse quest'anno?</li>
-              <li>Come funzionano gli acconti a giugno e novembre?</li>
-              <li>Cosa succede se supero gli 85.000 € di ricavi?</li>
-              <li>Come si applica il bollo da 2 € sulle mie fatture?</li>
-            </ul>
+          <div className="text-sm text-slate-400 space-y-3">
+            <p>Chiedi qualcosa al tuo commercialista AI:</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'Quanto devo accantonare per le tasse quest\'anno?',
+                'Come funzionano gli acconti a giugno e novembre?',
+                'Cosa succede se supero gli 85.000 € di ricavi?',
+                'Come si applica il bollo da 2 € sulle mie fatture?',
+                'Cos\'è il ravvedimento operoso?',
+              ].map((q) => (
+                <button
+                  key={q}
+                  className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full px-3 py-1.5 transition-colors"
+                  onClick={() => setInput(q)}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
             <p className="text-xs">L'AI riceve i tuoi dati fiscali calcolati dal motore deterministico: non inventa numeri.</p>
           </div>
         )}
