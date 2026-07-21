@@ -68,11 +68,14 @@ export const MODEL_OPTIONS: Record<LLMProvider, ModelOption[]> = {
     { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B — istantaneo' },
   ],
   ollama: [
-    { value: 'qwen3:32b', label: 'Qwen3 32B — bilanciato' },
+    { value: 'qwen3:32b', label: 'Qwen3 32B — bilanciato (consigliato)' },
     { value: 'qwen3:8b', label: 'Qwen3 8B — veloce' },
+    { value: 'deepseek-r1:32b', label: 'DeepSeek R1 32B — ragionamento' },
+    { value: 'deepseek-r1:8b', label: 'DeepSeek R1 8B — ragionamento veloce' },
+    { value: 'kimi-k2:32b', label: 'Kimi K2 32B' },
+    { value: 'glm-4.5:32b', label: 'GLM 4.5 32B' },
     { value: 'llama4:scout', label: 'Llama 4 Scout' },
     { value: 'llama4:maverick', label: 'Llama 4 Maverick' },
-    { value: 'deepseek-r1:32b', label: 'DeepSeek R1 32B — ragionamento' },
     { value: 'gpt-5:mini', label: 'GPT-5 mini (via Ollama)' },
   ],
   openrouter: [
