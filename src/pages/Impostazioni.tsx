@@ -305,6 +305,7 @@ export default function Impostazioni() {
                   setS({ ...s, llm: { ...s.llm, apiKey: val } })
                 }
               }}
+              onBlur={() => { saveSettings(s); setMsg('Chiave API salvata.'); }}
               autoComplete="new-password"
             />
           </div>
@@ -339,7 +340,24 @@ export default function Impostazioni() {
             )}
           </div>
         </div>
+        {s.llm.provider === 'ollama' && (
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="label">URL API Ollama (cloud)</label>
+              <input
+                className="input num"
+                value={s.ollama.apiUrl}
+                onChange={(e) => setS({ ...s, ollama: { ...s.ollama, apiUrl: e.target.value } })}
+                onBlur={() => { saveSettings(s); setMsg('Impostazioni AI salvate.'); }}
+              />
+              <p className="text-xs text-slate-400 mt-1">Default: https://ollama.com — non modificare se usi Ollama Cloud.</p>
+            </div>
+          </div>
+        )}
         <button className="btn-primary" onClick={() => { saveSettings(s); setMsg('Impostazioni AI salvate.'); }}>Salva</button>
+        <button className="btn-secondary" onClick={() => { const check = loadSettings(); setMsg(`Verifica: provider=${check.llm.provider}, key=${check.llm.provider === 'ollama' ? (check.ollama.apiKey ? 'presente (' + check.ollama.apiKey.slice(0,8) + '...)' : 'MANCANTE') : (check.llm.apiKey ? 'presente (' + check.llm.apiKey.slice(0,8) + '...)' : 'MANCANTE')}`); }}>
+          Verifica salvataggio
+        </button>
       </section>
 
       {/* ————— Email / n8n ————— */}
@@ -386,20 +404,6 @@ export default function Impostazioni() {
           Salva
         </button>
       </section>
-
-      {/* ————— Ollama Cloud URL (solo se provider = ollama) ————— */}
-      {s.llm.provider === 'ollama' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-          <div>
-            <label className="label">URL API Ollama</label>
-            <input
-              className="input num"
-              value={s.ollama.apiUrl}
-              onChange={(e) => setS({ ...s, ollama: { ...s.ollama, apiUrl: e.target.value } })}
-            />
-          </div>
-        </div>
-      )}
 
       {/* ————— Fatture in Cloud ————— */}
       <section className="card space-y-4">

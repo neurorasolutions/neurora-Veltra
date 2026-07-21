@@ -100,6 +100,7 @@ export interface Dichiarazione {
 }
 
 export interface ChatMessage {
+  session_id?: string
   id: string
   role: 'user' | 'assistant'
   content: string
@@ -116,4 +117,11 @@ export interface NewsFiscale {
   tags: string[]
   rilevante_forfettario: boolean
   created_at?: string
+}
+
+export interface ChatSessione {
+  id: string
+  titolo: string
+  created_at?: string
+  updated_at?: string
 }
