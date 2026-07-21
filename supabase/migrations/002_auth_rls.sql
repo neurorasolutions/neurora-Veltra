@@ -1,27 +1,26 @@
 -- 002: Auth-based RLS policies (sostituisce le policy permissive del 001)
--- Schema: veltra. Richiede Supabase Auth attivo con Google + Email providers.
+-- Prefisso: veltra_. Richiede Supabase Auth attivo con Google + Email providers.
 -- Ogni utente vede solo i propri dati (tenant_id = auth.uid()::text).
 
-set search_path to veltra, public;
 
 
 -- Rimuovi le policy permissive create nel 001
-drop policy if exists "tenant_all_profili_fiscali" on veltra.profili_fiscali;
-drop policy if exists "anon_all_profili_fiscali" on veltra.profili_fiscali;
-drop policy if exists "tenant_all_clienti" on veltra.clienti;
-drop policy if exists "anon_all_clienti" on veltra.clienti;
-drop policy if exists "tenant_all_fatture" on veltra.fatture;
-drop policy if exists "anon_all_fatture" on veltra.fatture;
-drop policy if exists "tenant_all_f24_generati" on veltra.f24_generati;
-drop policy if exists "anon_all_f24_generati" on veltra.f24_generati;
-drop policy if exists "tenant_all_scadenze" on veltra.scadenze;
-drop policy if exists "anon_all_scadenze" on veltra.scadenze;
-drop policy if exists "tenant_all_dichiarazioni" on veltra.dichiarazioni;
-drop policy if exists "anon_all_dichiarazioni" on veltra.dichiarazioni;
-drop policy if exists "tenant_all_chat_messages" on veltra.chat_messages;
-drop policy if exists "anon_all_chat_messages" on veltra.chat_messages;
-drop policy if exists "tenant_all_alert_log" on veltra.alert_log;
-drop policy if exists "anon_all_alert_log" on veltra.alert_log;
+drop policy if exists "tenant_all_profili_fiscali" on veltra_profili_fiscali;
+drop policy if exists "anon_all_profili_fiscali" on veltra_profili_fiscali;
+drop policy if exists "tenant_all_clienti" on veltra_clienti;
+drop policy if exists "anon_all_clienti" on veltra_clienti;
+drop policy if exists "tenant_all_fatture" on veltra_fatture;
+drop policy if exists "anon_all_fatture" on veltra_fatture;
+drop policy if exists "tenant_all_f24_generati" on veltra_f24_generati;
+drop policy if exists "anon_all_f24_generati" on veltra_f24_generati;
+drop policy if exists "tenant_all_scadenze" on veltra_scadenze;
+drop policy if exists "anon_all_scadenze" on veltra_scadenze;
+drop policy if exists "tenant_all_dichiarazioni" on veltra_dichiarazioni;
+drop policy if exists "anon_all_dichiarazioni" on veltra_dichiarazioni;
+drop policy if exists "tenant_all_chat_messages" on veltra_chat_messages;
+drop policy if exists "anon_all_chat_messages" on veltra_chat_messages;
+drop policy if exists "tenant_all_alert_log" on veltra_alert_log;
+drop policy if exists "anon_all_alert_log" on veltra_alert_log;
 
 -- Policy autenticati: ogni utente vede e modifica solo i propri record
 -- (tenant_id = auth.uid()::text). anon non ha accesso a nulla.
@@ -57,6 +56,6 @@ begin
 end $$;
 
 -- dati_normativi: leggibile da tutti gli autenticati (dati pubblici, non per-tenant)
-drop policy if exists "dati_normativi_all" on veltra.dati_normativi;
-create policy "dati_normativi_select" on veltra.dati_normativi
+drop policy if exists "dati_normativi_all" on veltra_dati_normativi;
+create policy "dati_normativi_select" on veltra_dati_normativi
   for select to authenticated using (true);

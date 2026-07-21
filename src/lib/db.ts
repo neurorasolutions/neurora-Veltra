@@ -8,7 +8,7 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const supabase: any = url && anonKey
-  ? createClient(url, anonKey, { db: { schema: 'veltra' } })
+  ? createClient(url, anonKey)
   : null
 
 export const isSupabaseMode = supabase !== null
@@ -22,6 +22,12 @@ export function setTenantId(id: string) {
 }
 export function getActiveTenantId(): string {
   return cachedTenantId
+}
+
+// In modalita Supabase le tabelle hanno il prefisso 'veltra_' per isolarsi
+// nel progetto condiviso (schema public, ma nome distinto).
+function sbTable(table: string): string {
+  return supabase ? `veltra_${table}` : table
 }
 
 function lsKey(table: string) {
@@ -42,7 +48,7 @@ function lsWrite<T>(table: string, rows: T[]) {
 
 export async function dbList<T extends { id: string }>(table: string): Promise<T[]> {
   if (supabase) {
-    const { data, error } = await supabase.from(table).select('*').eq('tenant_id', getActiveTenantId()).order('created_at', { ascending: false })
+    const { data, error } = await supabase.from(sbTable(table)).select('*').eq('tenant_id', getActiveTenantId()).order('created_at', { ascending: false })
     if (error) throw error
     return (data || []) as T[]
   }
@@ -57,7 +63,7 @@ export async function dbInsert<T extends { id?: string }>(table: string, row: Pa
     created_at: new Date().toISOString(),
   } as unknown as T & { id: string }
   if (supabase) {
-    const { data, error } = await supabase.from(table).insert(record).select().single()
+    const { data, error } = await supabase.from(sbTable(table)).insert(record).select().single()
     if (error) throw error
     return data as T
   }
@@ -73,7 +79,7 @@ export async function dbUpdate<T extends { id: string }>(
   patch: Partial<T>
 ): Promise<void> {
   if (supabase) {
-    const { error } = await supabase.from(table).update(patch as Record<string, unknown>).eq('id', id)
+    const { error } = await supabase.from(sbTable(table)).update(patch as Record<string, unknown>).eq('id', id)
     if (error) throw error
     return
   }
@@ -87,7 +93,7 @@ export async function dbUpdate<T extends { id: string }>(
 
 export async function dbDelete(table: string, id: string): Promise<void> {
   if (supabase) {
-    const { error } = await supabase.from(table).delete().eq('id', id)
+    const { error } = await supabase.from(sbTable(table)).delete().eq('id', id)
     if (error) throw error
     return
   }

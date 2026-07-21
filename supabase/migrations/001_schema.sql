@@ -3,12 +3,10 @@
 -- RLS: ogni tabella filtra per tenant_id. In single-tenant c'è un solo tenant.
 
 create extension if not exists "pgcrypto";
-create schema if not exists veltra;
-set search_path to veltra, public;
 
 
 -- ————— Profili fiscali —————
-create table if not exists veltra.profili_fiscali (
+create table if not exists veltra_profili_fiscali (
   id uuid primary key default gen_random_uuid(),
   tenant_id text not null default 'local',
   denominazione text not null default '',
@@ -30,7 +28,7 @@ create table if not exists veltra.profili_fiscali (
 );
 
 -- ————— Clienti —————
-create table if not exists veltra.clienti (
+create table if not exists veltra_clienti (
   id uuid primary key default gen_random_uuid(),
   tenant_id text not null default 'local',
   denominazione text not null,
@@ -47,7 +45,7 @@ create table if not exists veltra.clienti (
 );
 
 -- ————— Fatture —————
-create table if not exists veltra.fatture (
+create table if not exists veltra_fatture (
   id uuid primary key default gen_random_uuid(),
   tenant_id text not null default 'local',
   numero text not null,
@@ -65,10 +63,10 @@ create table if not exists veltra.fatture (
   xml text,
   created_at timestamptz not null default now()
 );
-create index if not exists fatture_data_idx on veltra.fatture (tenant_id, data);
+create index if not exists veltra_fatture_data_idx on veltra_fatture (tenant_id, data);
 
 -- ————— F24 generati —————
-create table if not exists veltra.f24_generati (
+create table if not exists veltra_f24_generati (
   id uuid primary key default gen_random_uuid(),
   tenant_id text not null default 'local',
   anno_riferimento int not null,
@@ -81,7 +79,7 @@ create table if not exists veltra.f24_generati (
 );
 
 -- ————— Scadenze —————
-create table if not exists veltra.scadenze (
+create table if not exists veltra_scadenze (
   id uuid primary key default gen_random_uuid(),
   tenant_id text not null default 'local',
   tipo text not null,
@@ -93,7 +91,7 @@ create table if not exists veltra.scadenze (
 );
 
 -- ————— Dichiarazioni —————
-create table if not exists veltra.dichiarazioni (
+create table if not exists veltra_dichiarazioni (
   id uuid primary key default gen_random_uuid(),
   tenant_id text not null default 'local',
   anno_imposta int not null,
@@ -105,7 +103,7 @@ create table if not exists veltra.dichiarazioni (
 );
 
 -- ————— Chat commercialista AI —————
-create table if not exists veltra.chat_messages (
+create table if not exists veltra_chat_messages (
   id uuid primary key default gen_random_uuid(),
   tenant_id text not null default 'local',
   role text not null check (role in ('user','assistant')),
@@ -114,7 +112,7 @@ create table if not exists veltra.chat_messages (
 );
 
 -- ————— Dati normativi (fonti verificate, D-006) —————
-create table if not exists veltra.dati_normativi (
+create table if not exists veltra_dati_normativi (
   id uuid primary key default gen_random_uuid(),
   chiave text unique not null,
   valore text not null,
@@ -128,7 +126,7 @@ create table if not exists veltra.dati_normativi (
 );
 
 -- ————— Alert log —————
-create table if not exists veltra.alert_log (
+create table if not exists veltra_alert_log (
   id uuid primary key default gen_random_uuid(),
   tenant_id text not null default 'local',
   tipo text not null,
@@ -141,14 +139,14 @@ create table if not exists veltra.alert_log (
 -- ————— RLS (multi-tenant-ready) —————
 -- Nota MVP: policy permissive per utenti autenticati; quando si passa al SaaS
 -- si sostituisce 'true' con il match tenant_id ↔ auth.uid()/claims.
-alter table veltra.profili_fiscali enable row level security;
-alter table veltra.clienti enable row level security;
-alter table veltra.fatture enable row level security;
-alter table veltra.f24_generati enable row level security;
-alter table veltra.scadenze enable row level security;
-alter table veltra.dichiarazioni enable row level security;
-alter table veltra.chat_messages enable row level security;
-alter table veltra.alert_log enable row level security;
+alter table veltra_profili_fiscali enable row level security;
+alter table veltra_clienti enable row level security;
+alter table veltra_fatture enable row level security;
+alter table veltra_f24_generati enable row level security;
+alter table veltra_scadenze enable row level security;
+alter table veltra_dichiarazioni enable row level security;
+alter table veltra_chat_messages enable row level security;
+alter table veltra_alert_log enable row level security;
 
 do $$
 declare t text;
@@ -163,7 +161,7 @@ end $$;
 --   Rimuoverle appena si attiva l'autenticazione Supabase.
 
 -- ————— Seed dati normativi (verificati 11/07/2026) —————
-insert into veltra.dati_normativi (chiave, valore, descrizione, fonte_nome, data_verifica, data_validita_da) values
+insert into veltra_dati_normativi (chiave, valore, descrizione, fonte_nome, data_verifica, data_validita_da) values
   ('imposta_sostitutiva_forfettario','0.15','Imposta sostitutiva forfettario','Art. 1 c.54-89 L.190/2014','2026-07-11','2026-01-01'),
   ('imposta_sostitutiva_agevolata','0.05','Imposta agevolata primi 5 anni','Art. 1 c.54 L.190/2014','2026-07-11','2026-01-01'),
   ('coeff_ateco_59.20.3','0.67','Coefficiente redditività','Allegato 2 L.190/2014','2026-07-11','2026-01-01'),
