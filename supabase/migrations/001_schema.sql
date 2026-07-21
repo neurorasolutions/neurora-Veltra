@@ -153,8 +153,8 @@ declare t text;
 begin
   foreach t in array array['profili_fiscali','clienti','fatture','f24_generati','scadenze','dichiarazioni','chat_messages','alert_log']
   loop
-    execute format('create policy "tenant_all_%s" on %I for all to authenticated using (true) with check (true)', t, t);
-    execute format('create policy "anon_all_%s" on %I for all to anon using (true) with check (true)', t, t);
+    execute format('create policy "tenant_all_%s" on %I for all to authenticated using (true) with check (true)', t, 'veltra_' || t);
+    execute format('create policy "anon_all_%s" on %I for all to anon using (true) with check (true)', t, 'veltra_' || t);
   end loop;
 end $$;
 -- ⚠ Le policy "anon" servono solo per l'uso single-tenant senza login.
