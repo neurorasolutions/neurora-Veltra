@@ -77,22 +77,20 @@ F24 recenti:\n${f24 || '- nessuno'}`
       let aggiornamenti = ''
       const tutteFonti: { titolo: string; url: string; fonte: string }[] = []
 
-      // RAG: cerca articoli rilevanti nel DB (feed RSS scaricati)
+      // RAG + web search in parallelo (Promise.all) per minimizzare la latenza
       let newsResults: Awaited<ReturnType<typeof searchRelevantNews>> = []
-      if (s.rag.enabled) {
-        try {
-          newsResults = await searchRelevantNews(domanda, 5)
-          newsResults.forEach((n) => tutteFonti.push({ titolo: n.titolo, url: n.url, fonte: n.fonte }))
-        } catch { /* RAG non bloccante */ }
-      }
-
-      // Web search: cerca in tempo reale su DuckDuckGo
       let webResults: SearchResult[] = []
-      if (s.webSearch.enabled) {
-        try {
-          webResults = await webSearch(domanda, 5)
-          webResults.forEach((w) => tutteFonti.push({ titolo: w.titolo, url: w.url, fonte: w.fonte }))
-        } catch { /* web search non bloccante */ }
+      const [ragP, wsP] = await Promise.allSettled([
+        s.rag.enabled ? searchRelevantNews(domanda, 5) : Promise.resolve([] as Awaited<ReturnType<typeof searchRelevantNews>>),
+        s.webSearch.enabled ? webSearch(domanda, 5) : Promise.resolve([] as SearchResult[]),
+      ])
+      if (ragP.status === 'fulfilled') {
+        newsResults = ragP.value
+        newsResults.forEach((n) => tutteFonti.push({ titolo: n.titolo, url: n.url, fonte: n.fonte }))
+      }
+      if (wsP.status === 'fulfilled') {
+        webResults = wsP.value
+        webResults.forEach((w) => tutteFonti.push({ titolo: w.titolo, url: w.url, fonte: w.fonte }))
       }
 
       // Formatta contesto per il system prompt
