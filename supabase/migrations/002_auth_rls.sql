@@ -33,24 +33,24 @@ begin
   ]
   loop
     execute format(
-      'create policy "%1$s_select" on veltra.%1$I for select to authenticated
+      'create policy "%1$s_select" on %2$I for select to authenticated
        using (tenant_id = auth.uid()::text)',
-      t
+      t, 'veltra_' || t
     );
     execute format(
-      'create policy "%1$s_insert" on veltra.%1$I for insert to authenticated
+      'create policy "%1$s_insert" on %2$I for insert to authenticated
        with check (tenant_id = auth.uid()::text)',
-      t
+      t, 'veltra_' || t
     );
     execute format(
-      'create policy "%1$s_update" on veltra.%1$I for update to authenticated
+      'create policy "%1$s_update" on %2$I for update to authenticated
        using (tenant_id = auth.uid()::text) with check (tenant_id = auth.uid()::text)',
-      t
+      t, 'veltra_' || t
     );
     execute format(
-      'create policy "%1$s_delete" on veltra.%1$I for delete to authenticated
+      'create policy "%1$s_delete" on %2$I for delete to authenticated
        using (tenant_id = auth.uid()::text)',
-      t
+      t, 'veltra_' || t
     );
   end loop;
 end $$;
