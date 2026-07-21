@@ -1,4 +1,4 @@
-import { Session, User } from '@supabase/supabase-js'
+import type { Session, User } from '@supabase/supabase-js'
 import { supabase, isSupabaseMode } from './db'
 
 export function requireAuth(): boolean {
@@ -42,7 +42,7 @@ export async function getSession(): Promise<Session | null> {
 
 export function onAuthChange(cb: (user: User | null) => void) {
   if (!supabase) return () => {}
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
     cb(session?.user ?? null)
   })
   return () => data.subscription.unsubscribe()

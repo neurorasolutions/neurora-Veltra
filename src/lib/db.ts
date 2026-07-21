@@ -1,13 +1,15 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
 // Layer dati: usa Supabase se configurato via .env, altrimenti localStorage.
-// Le tabelle e i campi coincidono, quindi il passaggio è trasparente.
+// Le tabelle vivono nello schema 'veltra' per tenere ordine nel progetto condiviso.
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-export const supabase: SupabaseClient | null =
-  url && anonKey ? createClient(url, anonKey) : null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const supabase: any = url && anonKey
+  ? createClient(url, anonKey, { db: { schema: 'veltra' } })
+  : null
 
 export const isSupabaseMode = supabase !== null
 
