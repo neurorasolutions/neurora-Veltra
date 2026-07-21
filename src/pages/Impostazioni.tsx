@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useProfilo, useTable } from '../lib/hooks'
 import { Cliente, Fattura } from '../types'
 import {
@@ -22,6 +22,8 @@ export default function Impostazioni() {
   const { insert: insertCliente, rows: clienti } = useTable<Cliente>('clienti')
   const { insert: insertFattura, rows: fatture } = useTable<Fattura>('fatture')
   const [s, setS] = useState<Settings>(loadSettings())
+  const sRef = useRef(s)
+  sRef.current = s
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [mostraNormativi, setMostraNormativi] = useState(false)
@@ -93,11 +95,31 @@ export default function Impostazioni() {
     s.llm.provider === 'openrouter' && orModels.length > 0 ? orModels : MODEL_OPTIONS[s.llm.provider]
   const modelConosciuto = modelOptions.some((o) => o.value === s.llm.model)
 
+  // Robust save: uses ref to avoid stale closures, logs to console for debugging
   function salva(patch: Partial<Settings>) {
-    const next = { ...s, ...patch }
+    const next = { ...sRef.current, ...patch }
     setS(next)
+    sRef.current = next
     saveSettings(next)
+    console.log('[Impostazioni] salva:', patch)
     setMsg('Impostazioni salvate.')
+  }
+
+  function salvaTutto() {
+    const current = sRef.current
+    saveSettings(current)
+    console.log('[Impostazioni] salvaTutto:', { provider: current.llm.provider, hasKey: !!(current.llm.provider === 'ollama' ? current.ollama.apiKey : current.llm.apiKey) })
+    setMsg('Impostazioni AI salvate.')
+  }
+
+  function verificaSalvataggio() {
+    const check = loadSettings()
+    const keyInfo = check.llm.provider === 'ollama'
+      ? (check.ollama.apiKey ? `presente (${check.ollama.apiKey.slice(0, 8)}...)` : 'MANCANTE')
+      : (check.llm.apiKey ? `presente (${check.llm.apiKey.slice(0, 8)}...)` : 'MANCANTE')
+    const msg = `Verifica: provider=${check.llm.provider}, key=${keyInfo}, modello=${check.llm.model}`
+    console.log('[Impostazioni] verifica:', msg)
+    setMsg(msg)
   }
 
   async function testAruba() {
@@ -305,7 +327,7 @@ export default function Impostazioni() {
                   setS({ ...s, llm: { ...s.llm, apiKey: val } })
                 }
               }}
-              onBlur={() => { saveSettings(s); setMsg('Chiave API salvata.'); }}
+              onBlur={() => { saveSettings(sRef.current); setMsg('Chiave API salvata.'); }}
               autoComplete="new-password"
             />
           </div>
@@ -348,16 +370,14 @@ export default function Impostazioni() {
                 className="input num"
                 value={s.ollama.apiUrl}
                 onChange={(e) => setS({ ...s, ollama: { ...s.ollama, apiUrl: e.target.value } })}
-                onBlur={() => { saveSettings(s); setMsg('Impostazioni AI salvate.'); }}
+                onBlur={() => { saveSettings(sRef.current); setMsg('Impostazioni AI salvate.'); }}
               />
               <p className="text-xs text-slate-400 mt-1">Default: https://ollama.com — non modificare se usi Ollama Cloud.</p>
             </div>
           </div>
         )}
-        <button className="btn-primary" onClick={() => { saveSettings(s); setMsg('Impostazioni AI salvate.'); }}>Salva</button>
-        <button className="btn-secondary" onClick={() => { const check = loadSettings(); setMsg(`Verifica: provider=${check.llm.provider}, key=${check.llm.provider === 'ollama' ? (check.ollama.apiKey ? 'presente (' + check.ollama.apiKey.slice(0,8) + '...)' : 'MANCANTE') : (check.llm.apiKey ? 'presente (' + check.llm.apiKey.slice(0,8) + '...)' : 'MANCANTE')}`); }}>
-          Verifica salvataggio
-        </button>
+        <button className="btn-primary" onClick={salvaTutto}>Salva</button>
+        <button className="btn-secondary" onClick={verificaSalvataggio}>Verifica salvataggio</button>
       </section>
 
       {/* ————— Email / n8n ————— */}
