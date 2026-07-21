@@ -253,6 +253,7 @@ export default function Impostazioni() {
                 setS({ ...s, llm: { ...s.llm, provider, model: DEFAULT_MODELS[provider] } })
               }}
             >
+              <option value="ollama">Ollama (cloud Pro)</option>
               <option value="openrouter">OpenRouter (tutti i modelli)</option>
               <option value="anthropic">Anthropic (Claude)</option>
               <option value="openai">OpenAI (GPT)</option>
@@ -348,6 +349,40 @@ export default function Impostazioni() {
           Salva
         </button>
       </section>
+
+      {/* ————— Ollama Cloud ————— */}
+      {s.llm.provider === 'ollama' && (
+        <section className="card space-y-4">
+          <h2 className="font-bold">Ollama Cloud — configurazione API</h2>
+          <p className="text-xs text-slate-400">
+            La chiave API si ottiene dalle impostazioni del tuo account Ollama (sezione API Keys).
+            L'URL predefinito è <code>https://api.ollama.com</code>. I modelli disponibili
+            dipendono dal tuo abbonamento Pro.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Chiave API Ollama</label>
+              <input
+                className="input"
+                type="password"
+                placeholder="ollama-..."
+                value={s.ollama.apiKey}
+                onChange={(e) => setS({ ...s, ollama: { ...s.ollama, apiKey: e.target.value } })}
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <label className="label">URL API Ollama</label>
+              <input
+                className="input num"
+                value={s.ollama.apiUrl}
+                onChange={(e) => setS({ ...s, ollama: { ...s.ollama, apiUrl: e.target.value } })}
+              />
+            </div>
+          </div>
+          <button className="btn-primary" onClick={() => salva({ ollama: s.ollama })}>Salva</button>
+        </section>
+      )}
 
       {/* ————— Fatture in Cloud ————— */}
       <section className="card space-y-4">

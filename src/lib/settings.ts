@@ -3,7 +3,7 @@
 // salvate in localStorage (mai committate, mai inviate a terzi se non
 // al rispettivo servizio).
 
-export type LLMProvider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
+export type LLMProvider = 'anthropic' | 'openai' | 'groq' | 'openrouter' | 'ollama'
 
 export interface Settings {
   // Provider SDI (Aruba) — richiede utenza Premium per i Web Services
@@ -24,6 +24,11 @@ export interface Settings {
     resendApiKey: string
     destinatario: string
   }
+  // Ollama Cloud API
+  ollama: {
+    apiKey: string
+    apiUrl: string
+  }
   // Migrazione da Fatture in Cloud
   fattureInCloud: {
     accessToken: string
@@ -38,6 +43,7 @@ export const DEFAULT_MODELS: Record<LLMProvider, string> = {
   openai: 'gpt-4o-mini',
   groq: 'llama-3.3-70b-versatile',
   openrouter: 'anthropic/claude-haiku-4.5',
+  ollama: 'qwen3:32b',
 }
 
 export interface ModelOption {
@@ -60,6 +66,14 @@ export const MODEL_OPTIONS: Record<LLMProvider, ModelOption[]> = {
   groq: [
     { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B — versatile' },
     { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B — istantaneo' },
+  ],
+  ollama: [
+    { value: 'qwen3:32b', label: 'Qwen3 32B — bilanciato' },
+    { value: 'qwen3:8b', label: 'Qwen3 8B — veloce' },
+    { value: 'llama4:scout', label: 'Llama 4 Scout' },
+    { value: 'llama4:maverick', label: 'Llama 4 Maverick' },
+    { value: 'deepseek-r1:32b', label: 'DeepSeek R1 32B — ragionamento' },
+    { value: 'gpt-5:mini', label: 'GPT-5 mini (via Ollama)' },
   ],
   openrouter: [
     { value: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5' },
@@ -91,6 +105,10 @@ const DEFAULTS: Settings = {
     companyId: '',
   },
   n8nWebhookUrl: '',
+  ollama: {
+    apiKey: '',
+    apiUrl: 'https://api.ollama.com',
+  },
 }
 
 const KEY = 'nf_settings'
@@ -108,6 +126,7 @@ export function loadSettings(): Settings {
       llm: { ...DEFAULTS.llm, ...(parsed.llm || {}) },
       email: { ...DEFAULTS.email, ...(parsed.email || {}) },
       fattureInCloud: { ...DEFAULTS.fattureInCloud, ...(parsed.fattureInCloud || {}) },
+      ollama: { ...DEFAULTS.ollama, ...(parsed.ollama || {}) },
     }
   } catch {
     return structuredClone(DEFAULTS)
@@ -123,5 +142,6 @@ export function isArubaConfigured(s: Settings) {
 }
 
 export function isLLMConfigured(s: Settings) {
+  if (s.llm.provider === 'ollama') return !!s.ollama.apiKey
   return !!s.llm.apiKey
 }

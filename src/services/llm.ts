@@ -54,16 +54,20 @@ export async function chatLLM(messages: LLMMessage[], systemPrompt: string): Pro
     }
     case 'openai':
     case 'groq':
-    case 'openrouter': {
+    case 'openrouter':
+    case 'ollama': {
       const base =
         s.llm.provider === 'openai'
           ? 'https://api.openai.com/v1'
           : s.llm.provider === 'groq'
             ? 'https://api.groq.com/openai/v1'
-            : 'https://openrouter.ai/api/v1'
+            : s.llm.provider === 'ollama'
+              ? `${s.ollama.apiUrl}/v1`
+              : 'https://openrouter.ai/api/v1'
+      const apiKey = s.llm.provider === 'ollama' ? s.ollama.apiKey : s.llm.apiKey
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${s.llm.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       }
       // OpenRouter consiglia (facoltativi) questi header per identificare l'app
       if (s.llm.provider === 'openrouter') {
