@@ -1,6 +1,6 @@
 -- 002: Auth-based RLS policies (sostituisce le policy permissive del 001)
 -- Schema: veltra. Richiede Supabase Auth attivo con Google + Email providers.
--- Ogni utente vede solo i propri dati (tenant_id = auth.uid()).
+-- Ogni utente vede solo i propri dati (tenant_id = auth.uid()::text).
 
 set search_path to veltra, public;
 
@@ -24,7 +24,7 @@ drop policy if exists "tenant_all_alert_log" on veltra.alert_log;
 drop policy if exists "anon_all_alert_log" on veltra.alert_log;
 
 -- Policy autenticati: ogni utente vede e modifica solo i propri record
--- (tenant_id = auth.uid()). anon non ha accesso a nulla.
+-- (tenant_id = auth.uid()::text). anon non ha accesso a nulla.
 do $$
 declare t text;
 begin
@@ -35,22 +35,22 @@ begin
   loop
     execute format(
       'create policy "%1$s_select" on veltra.%1$I for select to authenticated
-       using (tenant_id = auth.uid())',
+       using (tenant_id = auth.uid()::text)',
       t
     );
     execute format(
       'create policy "%1$s_insert" on veltra.%1$I for insert to authenticated
-       with check (tenant_id = auth.uid())',
+       with check (tenant_id = auth.uid()::text)',
       t
     );
     execute format(
       'create policy "%1$s_update" on veltra.%1$I for update to authenticated
-       using (tenant_id = auth.uid()) with check (tenant_id = auth.uid())',
+       using (tenant_id = auth.uid()::text) with check (tenant_id = auth.uid()::text)',
       t
     );
     execute format(
       'create policy "%1$s_delete" on veltra.%1$I for delete to authenticated
-       using (tenant_id = auth.uid())',
+       using (tenant_id = auth.uid()::text)',
       t
     );
   end loop;
