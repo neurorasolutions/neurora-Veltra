@@ -105,3 +105,15 @@ export interface ChatMessage {
   content: string
   created_at?: string
 }
+
+export interface NewsFiscale {
+  id: string
+  fonte: string
+  titolo: string
+  url: string
+  contenuto: string
+  data_pubblicazione: string | null
+  tags: string[]
+  rilevante_forfettario: boolean
+  created_at?: string
+}

@@ -36,6 +36,14 @@ export interface Settings {
   }
   // Webhook n8n per alert schedulati
   n8nWebhookUrl: string
+  // RAG normativo + web search
+  rag: {
+    enabled: boolean
+    autoFetch: boolean
+  }
+  webSearch: {
+    enabled: boolean
+  }
 }
 
 export const DEFAULT_MODELS: Record<LLMProvider, string> = {
@@ -43,7 +51,7 @@ export const DEFAULT_MODELS: Record<LLMProvider, string> = {
   openai: 'gpt-4o-mini',
   groq: 'llama-3.3-70b-versatile',
   openrouter: 'anthropic/claude-haiku-4.5',
-  ollama: 'qwen3:32b',
+  ollama: 'glm-5.2',
 }
 
 export interface ModelOption {
@@ -68,15 +76,20 @@ export const MODEL_OPTIONS: Record<LLMProvider, ModelOption[]> = {
     { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B — istantaneo' },
   ],
   ollama: [
-    { value: 'qwen3:32b', label: 'Qwen3 32B — bilanciato (consigliato)' },
-    { value: 'qwen3:8b', label: 'Qwen3 8B — veloce' },
-    { value: 'deepseek-r1:32b', label: 'DeepSeek R1 32B — ragionamento' },
-    { value: 'deepseek-r1:8b', label: 'DeepSeek R1 8B — ragionamento veloce' },
-    { value: 'kimi-k2:32b', label: 'Kimi K2 32B' },
-    { value: 'glm-4.5:32b', label: 'GLM 4.5 32B' },
-    { value: 'llama4:scout', label: 'Llama 4 Scout' },
-    { value: 'llama4:maverick', label: 'Llama 4 Maverick' },
-    { value: 'gpt-5:mini', label: 'GPT-5 mini (via Ollama)' },
+    { value: 'glm-5.2', label: 'GLM 5.2 — bilanciato (consigliato)' },
+    { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash — veloce' },
+    { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro — ragionamento' },
+    { value: 'kimi-k2.7-code', label: 'Kimi K2.7 Code' },
+    { value: 'kimi-k2.6', label: 'Kimi K2.6' },
+    { value: 'kimi-k2.5', label: 'Kimi K2.5' },
+    { value: 'qwen3.5:397b', label: 'Qwen3.5 397B — massima qualita' },
+    { value: 'glm-5.1', label: 'GLM 5.1' },
+    { value: 'mistral-large-3:675b', label: 'Mistral Large 3 675B' },
+    { value: 'nemotron-3-ultra', label: 'Nemotron 3 Ultra' },
+    { value: 'nemotron-3-super', label: 'Nemotron 3 Super' },
+    { value: 'gpt-oss:120b', label: 'GPT-OSS 120B' },
+    { value: 'gpt-oss:20b', label: 'GPT-OSS 20B — veloce' },
+    { value: 'gemma4:31b', label: 'Gemma 4 31B' },
   ],
   openrouter: [
     { value: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5' },
@@ -110,7 +123,14 @@ const DEFAULTS: Settings = {
   n8nWebhookUrl: '',
   ollama: {
     apiKey: '',
-    apiUrl: 'https://api.ollama.com',
+    apiUrl: 'https://ollama.com',
+  },
+  rag: {
+    enabled: true,
+    autoFetch: false,
+  },
+  webSearch: {
+    enabled: true,
   },
 }
 
@@ -130,6 +150,8 @@ export function loadSettings(): Settings {
       email: { ...DEFAULTS.email, ...(parsed.email || {}) },
       fattureInCloud: { ...DEFAULTS.fattureInCloud, ...(parsed.fattureInCloud || {}) },
       ollama: { ...DEFAULTS.ollama, ...(parsed.ollama || {}) },
+      rag: { ...DEFAULTS.rag, ...(parsed.rag || {}) },
+      webSearch: { ...DEFAULTS.webSearch, ...(parsed.webSearch || {}) },
     }
   } catch {
     return structuredClone(DEFAULTS)

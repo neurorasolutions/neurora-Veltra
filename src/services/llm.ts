@@ -62,7 +62,7 @@ export async function chatLLM(messages: LLMMessage[], systemPrompt: string): Pro
           : s.llm.provider === 'groq'
             ? 'https://api.groq.com/openai/v1'
             : s.llm.provider === 'ollama'
-              ? `${s.ollama.apiUrl}/v1`
+              ? (import.meta.env.DEV ? '/ollama-api/v1' : `${s.ollama.apiUrl}/v1`)
               : 'https://openrouter.ai/api/v1'
       const apiKey = s.llm.provider === 'ollama' ? s.ollama.apiKey : s.llm.apiKey
       const headers: Record<string, string> = {
@@ -90,7 +90,7 @@ export async function chatLLM(messages: LLMMessage[], systemPrompt: string): Pro
   }
 }
 
-export function buildSystemPrompt(contestoFiscale: string): string {
+export function buildSystemPrompt(contestoFiscale: string, aggiornamentiNormativi = ''): string {
   return `Sei il "commercialista AI" di una piattaforma fiscale per Partite IVA italiane in regime forfettario.
 
 REGOLE:
@@ -112,5 +112,10 @@ PARAMETRI NORMATIVI 2026 (verificati):
 - Codici tributo: 1790 (saldo), 1791 (1° acconto), 1792 (2° acconto)
 - Bollo 2 € su fatture > 77,47 € — codici trimestrali 2521-2524
 - Tasso legale 2026: 1,60% — Sanzione base omesso versamento: 25%
-- Scadenze 2026: F24 30/6 e 30/11, Redditi PF 2/11`
+- Scadenze 2026: F24 30/6 e 30/11, Redditi PF 2/11
+
+IMPORTANTE — Le tue conoscenze possono essere datate. Se ci sono aggiornamenti normativi sotto, usa quelli come fonte piu recente e cita la fonte.
+
+AGGIORNAMENTI NORMATIVI E RISULTATI WEB:
+${aggiornamentiNormativi || "Nessun aggiornamento esterno disponibile. Avvisa l'utente che le informazioni potrebbero non essere aggiornate all'ultima normativa."}`
 }

@@ -15,6 +15,7 @@ import { importaDaFattureInCloud } from '../services/fattureInCloud'
 import { arubaProvider } from '../services/sdi'
 import { DATI_NORMATIVI_2026 } from '../engine/datiNormativi'
 import { isSupabaseMode } from '../lib/db'
+import { fetchAllRSS, RSS_SOURCES, countNews, recentNews } from '../services/ragNews'
 
 export default function Impostazioni() {
   const { profilo, update: updateProfilo } = useProfilo()
@@ -24,6 +25,10 @@ export default function Impostazioni() {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [mostraNormativi, setMostraNormativi] = useState(false)
+  const [ragBusy, setRagBusy] = useState(false)
+  const [ragResults, setRagResults] = useState<{ fonte: string; articoli: number; errore?: string }[]>([])
+  const [newsCount, setNewsCount] = useState(0)
+  const [ultimeNews, setUltimeNews] = useState<{ titolo: string; fonte: string; data_pubblicazione: string | null }[]>([])
 
   function esportaDati() {
     const tabelle = ['profili_fiscali', 'clienti', 'fatture', 'f24_generati', 'scadenze', 'dichiarazioni', 'chat_messages']
@@ -71,6 +76,11 @@ export default function Impostazioni() {
   const [modelManuale, setModelManuale] = useState(false)
 
   useEffect(() => {
+    countNews().then(setNewsCount).catch(() => {})
+    recentNews(5).then((n) => setUltimeNews(n)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     if (s.llm.provider !== 'openrouter' || orModels.length > 0) return
     setOrLoading(true)
     fetchOpenRouterModels()
@@ -103,6 +113,26 @@ export default function Impostazioni() {
       )
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function aggiornaNormative() {
+    setRagBusy(true)
+    setMsg('Scaricamento feed RSS fiscali in corso…')
+    try {
+      const results = await fetchAllRSS()
+      setRagResults(results)
+      const total = results.reduce((acc, r) => acc + r.articoli, 0)
+      const errors = results.filter((r) => r.errore).map((r) => `${r.fonte}: ${r.errore}`).join('; ')
+      setMsg(
+        `Aggiornamento completato: ${total} nuovi articoli salvati.${errors ? ' Errori: ' + errors : ''}`
+      )
+      setNewsCount(await countNews())
+      setUltimeNews((await recentNews(5)).map((n) => ({ titolo: n.titolo, fonte: n.fonte, data_pubblicazione: n.data_pubblicazione })))
+    } catch (e) {
+      setMsg(`Errore aggiornamento normative: ${e instanceof Error ? e.message : 'errore'}`)
+    } finally {
+      setRagBusy(false)
     }
   }
 
@@ -265,9 +295,16 @@ export default function Impostazioni() {
             <input
               className="input"
               type="password"
-              placeholder="sk-..."
-              value={s.llm.apiKey}
-              onChange={(e) => setS({ ...s, llm: { ...s.llm, apiKey: e.target.value } })}
+              placeholder={s.llm.provider === 'ollama' ? 'ollama-...' : 'sk-...'}
+              value={s.llm.provider === 'ollama' ? s.ollama.apiKey : s.llm.apiKey}
+              onChange={(e) => {
+                const val = e.target.value
+                if (s.llm.provider === 'ollama') {
+                  setS({ ...s, ollama: { ...s.ollama, apiKey: val } })
+                } else {
+                  setS({ ...s, llm: { ...s.llm, apiKey: val } })
+                }
+              }}
               autoComplete="new-password"
             />
           </div>
@@ -302,7 +339,7 @@ export default function Impostazioni() {
             )}
           </div>
         </div>
-        <button className="btn-primary" onClick={() => salva({ llm: s.llm })}>Salva</button>
+        <button className="btn-primary" onClick={() => { saveSettings(s); setMsg('Impostazioni AI salvate.'); }}>Salva</button>
       </section>
 
       {/* ————— Email / n8n ————— */}
@@ -350,38 +387,18 @@ export default function Impostazioni() {
         </button>
       </section>
 
-      {/* ————— Ollama Cloud ————— */}
+      {/* ————— Ollama Cloud URL (solo se provider = ollama) ————— */}
       {s.llm.provider === 'ollama' && (
-        <section className="card space-y-4">
-          <h2 className="font-bold">Ollama Cloud — configurazione API</h2>
-          <p className="text-xs text-slate-400">
-            La chiave API si ottiene dalle impostazioni del tuo account Ollama (sezione API Keys).
-            L'URL predefinito è <code>https://api.ollama.com</code>. I modelli disponibili
-            dipendono dal tuo abbonamento Pro.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="label">Chiave API Ollama</label>
-              <input
-                className="input"
-                type="password"
-                placeholder="ollama-..."
-                value={s.ollama.apiKey}
-                onChange={(e) => setS({ ...s, ollama: { ...s.ollama, apiKey: e.target.value } })}
-                autoComplete="new-password"
-              />
-            </div>
-            <div>
-              <label className="label">URL API Ollama</label>
-              <input
-                className="input num"
-                value={s.ollama.apiUrl}
-                onChange={(e) => setS({ ...s, ollama: { ...s.ollama, apiUrl: e.target.value } })}
-              />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+          <div>
+            <label className="label">URL API Ollama</label>
+            <input
+              className="input num"
+              value={s.ollama.apiUrl}
+              onChange={(e) => setS({ ...s, ollama: { ...s.ollama, apiUrl: e.target.value } })}
+            />
           </div>
-          <button className="btn-primary" onClick={() => salva({ ollama: s.ollama })}>Salva</button>
-        </section>
+        </div>
       )}
 
       {/* ————— Fatture in Cloud ————— */}
@@ -427,6 +444,80 @@ export default function Impostazioni() {
             Avvia migrazione
           </button>
         </div>
+      </section>
+
+      {/* ————— RAG normativo + Web search ————— */}
+      <section className="card space-y-4">
+        <div>
+          <h2 className="font-bold">Aggiornamento normativo (RAG + Web search)</h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Il commercialista AI si aggiorna automaticamente: scarica feed RSS da fonti fiscali italiane
+            (Agenzia delle Entrate, FiscoOggi, Eutekne) e cerca sul web in tempo reale quando risponde.
+            Articoli in database: <strong>{newsCount}</strong>
+          </p>
+        </div>
+
+        {/* Toggle RAG */}
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={s.rag.enabled}
+              onChange={(e) => salva({ rag: { ...s.rag, enabled: e.target.checked } })}
+              className="w-4 h-4 accent-accent" />
+            <span className="text-sm">RAG: usa feed RSS scaricati nelle risposte</span>
+          </label>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={s.webSearch.enabled}
+              onChange={(e) => salva({ webSearch: { enabled: e.target.checked } })}
+              className="w-4 h-4 accent-accent" />
+            <span className="text-sm">Web search: cerca in tempo reale su DuckDuckGo</span>
+          </label>
+        </div>
+
+        {/* Fonti RSS configurate */}
+        <div>
+          <p className="text-xs font-semibold text-slate-500 mb-2">Fonti RSS configurate:</p>
+          <div className="flex flex-wrap gap-2">
+            {RSS_SOURCES.map((src) => (
+              <span key={src.name} className="text-xs bg-slate-100 text-slate-600 rounded-full px-2.5 py-1">
+                {src.name}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <button className="btn-primary" onClick={aggiornaNormative} disabled={ragBusy || !isSupabaseMode}>
+          {ragBusy ? 'Scaricamento in corso…' : 'Aggiorna normative ora'}
+        </button>
+        {!isSupabaseMode && (
+          <p className="text-xs text-amber-600">RAG richiede Supabase attivo. Le tabelle news vivono nel cloud.</p>
+        )}
+
+        {/* Risultati ultimo fetch */}
+        {ragResults.length > 0 && (
+          <div className="text-xs space-y-1">
+            <p className="font-semibold text-slate-500">Ultimo aggiornamento:</p>
+            {ragResults.map((r, i) => (
+              <div key={i} className={r.errore ? 'text-rose-600' : 'text-slate-600'}>
+                {r.fonte}: {r.articoli} articoli{r.errore ? ` — ${r.errore}` : ''}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Ultime news in DB */}
+        {ultimeNews.length > 0 && (
+          <div className="text-xs space-y-1 border-t pt-2">
+            <p className="font-semibold text-slate-500">Ultimi articoli salvati:</p>
+            {ultimeNews.map((n, i) => (
+              <div key={i} className="text-slate-600 truncate">
+                [{n.fonte}] {n.titolo}
+                {n.data_pubblicazione && <span className="text-slate-400"> — {n.data_pubblicazione}</span>}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ————— Database ————— */}

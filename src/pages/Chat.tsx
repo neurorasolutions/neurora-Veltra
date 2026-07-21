@@ -5,6 +5,8 @@ import { ChatMessage, F24Doc, Fattura, Scadenza } from '../types'
 import { calcolaPrevisione, fmtEuro } from '../engine/fiscale'
 import { buildSystemPrompt, chatLLM, DISCLAIMER } from '../services/llm'
 import { isLLMConfigured, loadSettings } from '../lib/settings'
+import { searchRelevantNews } from '../services/ragNews'
+import { webSearch, formatContextForPrompt, SearchResult } from '../services/webSearch'
 
 export default function Chat() {
   const { profilo } = useProfilo()
@@ -16,6 +18,8 @@ export default function Chat() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [errore, setErrore] = useState('')
+  const [fonti, setFonti] = useState<{ titolo: string; url: string; fonte: string }[]>([])
+  const [ragStatus, setRagStatus] = useState<'idle' | 'searching' | 'done'>('idle')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const configured = isLLMConfigured(loadSettings())
@@ -64,19 +68,56 @@ F24 recenti:\n${f24 || '- nessuno'}`
     if (!domanda || busy) return
     setInput('')
     setErrore('')
+    setFonti([])
     setBusy(true)
+    setRagStatus('searching')
     await insert({ role: 'user', content: domanda })
     try {
+      const s = loadSettings()
+      let aggiornamenti = ''
+      const tutteFonti: { titolo: string; url: string; fonte: string }[] = []
+
+      // RAG: cerca articoli rilevanti nel DB (feed RSS scaricati)
+      let newsResults: Awaited<ReturnType<typeof searchRelevantNews>> = []
+      if (s.rag.enabled) {
+        try {
+          newsResults = await searchRelevantNews(domanda, 5)
+          newsResults.forEach((n) => tutteFonti.push({ titolo: n.titolo, url: n.url, fonte: n.fonte }))
+        } catch { /* RAG non bloccante */ }
+      }
+
+      // Web search: cerca in tempo reale su DuckDuckGo
+      let webResults: SearchResult[] = []
+      if (s.webSearch.enabled) {
+        try {
+          webResults = await webSearch(domanda, 5)
+          webResults.forEach((w) => tutteFonti.push({ titolo: w.titolo, url: w.url, fonte: w.fonte }))
+        } catch { /* web search non bloccante */ }
+      }
+
+      // Formatta contesto per il system prompt
+      aggiornamenti = formatContextForPrompt(
+        newsResults.map((n) => ({
+          titolo: n.titolo, fonte: n.fonte, contenuto: n.contenuto,
+          url: n.url, data_pubblicazione: n.data_pubblicazione,
+        })),
+        webResults
+      )
+
+      setRagStatus('done')
+      setFonti(tutteFonti)
+
       const history = [...messaggi, { role: 'user' as const, content: domanda }].map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }))
-      const risposta = await chatLLM(history.slice(-12), buildSystemPrompt(contestoFiscale()))
+      const risposta = await chatLLM(history.slice(-12), buildSystemPrompt(contestoFiscale(), aggiornamenti))
       await insert({ role: 'assistant', content: risposta })
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore sconosciuto')
     } finally {
       setBusy(false)
+      setRagStatus('idle')
     }
   }
 
@@ -130,7 +171,22 @@ F24 recenti:\n${f24 || '- nessuno'}`
             </div>
           </div>
         ))}
-        {busy && <div className="text-sm text-slate-400 animate-pulse">Il commercialista AI sta scrivendo…</div>}
+        {busy && (
+          <div className="text-sm text-slate-400 animate-pulse">
+            {ragStatus === 'searching' ? 'Ricerca aggiornamenti normativi e web…' : 'Il commercialista AI sta scrivendo…'}
+          </div>
+        )}
+        {fonti.length > 0 && !busy && (
+          <div className="border-t pt-3 mt-2 space-y-1">
+            <p className="text-xs font-semibold text-slate-500">Fonti consultate:</p>
+            {fonti.map((f, i) => (
+              <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
+                className="block text-xs text-accent hover:underline truncate">
+                [{f.fonte}] {f.titolo}
+              </a>
+            ))}
+          </div>
+        )}
         {errore && <div className="text-sm text-rose-600">Errore: {errore}</div>}
         <div ref={bottomRef} />
       </div>
