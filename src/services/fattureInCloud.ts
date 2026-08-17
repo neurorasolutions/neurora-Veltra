@@ -1,6 +1,6 @@
 // Migrazione one-time da Fatture in Cloud (E3/D-008: clonazione, FiC resta attivo).
 // Richiede un access token OAuth2 e l'ID azienda, da inserire in Impostazioni.
-// Token ottenibile da https://developers.fattureincloud.it (app personale).
+// Token ottenibile dalla web app FiC: Impostazioni → Applicazioni collegate.
 //
 // Cosa importa:
 //   - Clienti (tutti, paginati)
@@ -8,6 +8,9 @@
 //   - Note di credito EMESSE (issued_documents type=credit_note) → 'attiva' con importo negativo
 //   - Fatture RICEVUTE (received_documents type=expense)     → tipo 'passiva'
 //   - Note di credito RICEVUTE (received_documents type=passive_credit_note) → 'passiva' negativa
+//
+// Robusto: se un singolo tipo di documento manca di permesso (HTTP 403) la migrazione
+// NON si blocca: importa il resto e riporta l'avviso in `avvisi`.
 //
 // Fallback CORS automatico: se la chiamata diretta dal browser fallisce per un
 // errore di rete/CORS, la migrazione riprova attraverso la Supabase Edge Function
@@ -22,6 +25,7 @@ const BASE = 'https://api-v2.fattureincloud.it'
 export interface RisultatoMigrazione {
   clienti: Partial<Cliente>[]
   fatture: Partial<Fattura>[]
+  avvisi: string[]
 }
 
 function isTransportError(e: unknown): boolean {
@@ -33,12 +37,20 @@ function edgeUrl(): string {
   return base ? `${base.replace(/\/+$/, '')}/functions/v1/fic-migrate` : ''
 }
 
+function chiarisciErrore(label: string, e: unknown): string {
+  const msg = e instanceof Error ? e.message : 'errore sconosciuto'
+  if (msg.includes('403')) {
+    return `${label}: permesso mancante (HTTP 403) — aggiungi lo scope di lettura in FiC → Impostazioni → Applicazioni collegate.`
+  }
+  return `${label}: ${msg}`
+}
+
 async function ficGet(path: string): Promise<any> {
   const s = loadSettings()
   const res = await fetch(`${BASE}${path}`, {
     headers: { Authorization: `Bearer ${s.fattureInCloud.accessToken}` },
   })
-  if (!res.ok) throw new Error(`Fatture in Cloud HTTP ${res.status}: ${await res.text()}`)
+  if (!res.ok) throw new Error(`Fatture in Cloud HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`)
   return res.json()
 }
 
@@ -54,6 +66,21 @@ async function paginate<T>(path: string, mapper: (d: any) => T): Promise<T[]> {
     page++
   }
   return out
+}
+
+// Esegue una paginazione senza far fallire l'intera migrazione: in caso di errore
+// restituisce lista vuota + messaggio, così i tipi di documento con permessi
+// mancanti vengono saltati (e segnalati) invece di bloccare tutto.
+async function tryPaginate<T>(
+  label: string,
+  path: string,
+  mapper: (d: any) => T
+): Promise<{ items: T[]; errore?: string }> {
+  try {
+    return { items: await paginate(path, mapper) }
+  } catch (e) {
+    return { items: [], errore: chiarisciErrore(label, e) }
+  }
 }
 
 export async function importaDaFattureInCloud(atecoDefault: string): Promise<RisultatoMigrazione> {
@@ -73,8 +100,9 @@ async function importaDiretto(atecoDefault: string): Promise<RisultatoMigrazione
     throw new Error('Configura access token e company ID di Fatture in Cloud in Impostazioni.')
   }
   const cid = s.fattureInCloud.companyId
+  const avvisi: string[] = []
 
-  const clienti = await paginate<Partial<Cliente>>(`/c/${cid}/entities/clients`, (c) => ({
+  const clientiRes = await tryPaginate<Partial<Cliente>>('Clienti', `/c/${cid}/entities/clients`, (c) => ({
     denominazione: c.name || '',
     piva: c.vat_number || '',
     cf: c.tax_code || '',
@@ -86,9 +114,9 @@ async function importaDiretto(atecoDefault: string): Promise<RisultatoMigrazione
     cap: c.address_postal_code || '',
     paese: 'IT',
   }))
+  if (clientiRes.errore) avvisi.push(clientiRes.errore)
 
-  // Fatture emesse (attive)
-  const fatture = await paginate<Partial<Fattura>>(`/c/${cid}/issued_documents?type=invoice`, (d) => {
+  const fattureRes = await tryPaginate<Partial<Fattura>>('Fatture emesse', `/c/${cid}/issued_documents?type=invoice`, (d) => {
     const importo = Number(d.amount_net ?? d.amount_gross ?? 0)
     return {
       numero: String(d.number ?? ''),
@@ -102,9 +130,10 @@ async function importaDiretto(atecoDefault: string): Promise<RisultatoMigrazione
       stato_sdi: 'consegnata',
     }
   })
+  if (fattureRes.errore) avvisi.push(fattureRes.errore)
 
-  // Note di credito emesse (riducono i ricavi → importo negativo)
-  const noteCreditoEmesse = await paginate<Partial<Fattura>>(
+  const noteCreditoEmesseRes = await tryPaginate<Partial<Fattura>>(
+    'Note di credito emesse',
     `/c/${cid}/issued_documents?type=credit_note`,
     (d) => {
       const importo = Number(d.amount_net ?? d.amount_gross ?? 0)
@@ -121,17 +150,19 @@ async function importaDiretto(atecoDefault: string): Promise<RisultatoMigrazione
       }
     }
   )
+  if (noteCreditoEmesseRes.errore) avvisi.push(noteCreditoEmesseRes.errore)
 
-  // Fatture ricevute (passive — solo archivio, nel forfettario non deducibili)
-  const fattureRicevute = await paginate<Partial<Fattura>>(
+  const fattureRicevuteRes = await tryPaginate<Partial<Fattura>>(
+    'Fatture ricevute',
     `/c/${cid}/received_documents?type=expense`,
     (d) => {
       const importo = Number(d.amount_net ?? d.amount_gross ?? 0)
+      const fornitore = (d.entity || d.supplier) as { name?: string } | undefined
       return {
         numero: String(d.number ?? ''),
         data: d.date || '',
         tipo: 'passiva',
-        cliente_denominazione: d.entity?.name || d.supplier?.name || '',
+        cliente_denominazione: fornitore?.name || '',
         importo,
         descrizione: d.description || d.subject || 'Fattura ricevuta importata da Fatture in Cloud',
         ateco_codice: '',
@@ -140,17 +171,19 @@ async function importaDiretto(atecoDefault: string): Promise<RisultatoMigrazione
       }
     }
   )
+  if (fattureRicevuteRes.errore) avvisi.push(fattureRicevuteRes.errore)
 
-  // Note di credito ricevute (riducono le passive → importo negativo)
-  const noteCreditoRicevute = await paginate<Partial<Fattura>>(
+  const noteCreditoRicevuteRes = await tryPaginate<Partial<Fattura>>(
+    'Note di credito ricevute',
     `/c/${cid}/received_documents?type=passive_credit_note`,
     (d) => {
       const importo = Number(d.amount_net ?? d.amount_gross ?? 0)
+      const fornitore = (d.entity || d.supplier) as { name?: string } | undefined
       return {
         numero: String(d.number ?? ''),
         data: d.date || '',
         tipo: 'passiva',
-        cliente_denominazione: d.entity?.name || d.supplier?.name || '',
+        cliente_denominazione: fornitore?.name || '',
         importo: -importo,
         descrizione: 'Nota di credito ricevuta — importata da Fatture in Cloud',
         ateco_codice: '',
@@ -159,10 +192,17 @@ async function importaDiretto(atecoDefault: string): Promise<RisultatoMigrazione
       }
     }
   )
+  if (noteCreditoRicevuteRes.errore) avvisi.push(noteCreditoRicevuteRes.errore)
 
   return {
-    clienti,
-    fatture: [...fatture, ...noteCreditoEmesse, ...fattureRicevute, ...noteCreditoRicevute],
+    clienti: clientiRes.items,
+    fatture: [
+      ...fattureRes.items,
+      ...noteCreditoEmesseRes.items,
+      ...fattureRicevuteRes.items,
+      ...noteCreditoRicevuteRes.items,
+    ],
+    avvisi,
   }
 }
 
@@ -191,5 +231,9 @@ async function importaViaEdge(atecoDefault: string): Promise<RisultatoMigrazione
   }
   const data = await res.json()
   if (data.errore) throw new Error(data.errore)
-  return { clienti: data.clienti || [], fatture: data.fatture || [] }
+  return {
+    clienti: data.clienti || [],
+    fatture: data.fatture || [],
+    avvisi: data.avvisi || [],
+  }
 }

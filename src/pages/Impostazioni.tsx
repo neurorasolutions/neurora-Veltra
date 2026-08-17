@@ -185,9 +185,9 @@ export default function Impostazioni() {
           nuoveFatture++
         }
       }
-      setMsg(
-        `✓ Migrazione completata (clonazione — FiC resta attivo): ${nuoviClienti} clienti e ${nuoveFatture} fatture importate. Verifica i conteggi con FiC.`
-      )
+      const avvisi = res.avvisi || []
+      const base = `✓ Migrazione completata (clonazione — FiC resta attivo): ${nuoviClienti} clienti e ${nuoveFatture} fatture importate.`
+      setMsg(avvisi.length > 0 ? `${base} ⚠️ Alcuni elementi saltati: ${avvisi.join(' ')}` : `${base} Verifica i conteggi con FiC.`)
     } catch (e) {
       setMsg(`✗ Migrazione fallita: ${e instanceof Error ? e.message : 'errore'}`)
     } finally {
