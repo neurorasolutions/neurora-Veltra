@@ -154,7 +154,7 @@ export async function generaPdfF24(doc: F24Doc, profilo: ProfiloFiscale): Promis
   ]
   for (const i of istruzioni) text(ctx, i, { size: 9, color: ctx.muted })
 
-  text(ctx, 'Documento di appoggio generato da Neurora Fiscale — non è un modello F24 ufficiale.', {
+  text(ctx, 'Documento di appoggio generato da VELTRA by Neurora — non è un modello F24 ufficiale.', {
     size: 8,
     color: ctx.faint,
     gap: 24,
@@ -230,7 +230,7 @@ export async function generaPdfQuadroLM(quadro: QuadroLM, profilo: ProfiloFiscal
     size: 8,
     color: ctx.faint,
   })
-  text(ctx, 'Documento di appoggio generato da Neurora Fiscale — non è un modello Redditi ufficiale.', {
+  text(ctx, 'Documento di appoggio generato da VELTRA by Neurora — non è un modello Redditi ufficiale.', {
     size: 8,
     color: ctx.faint,
   })

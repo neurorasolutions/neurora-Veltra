@@ -39,7 +39,7 @@ export default function Login() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <div className="text-3xl font-extrabold bg-neurora-gradient bg-clip-text text-transparent">
-            Neurora Fiscale
+            VELTRA by Neurora
           </div>
           <p className="text-sm text-slate-500 mt-1">Il gestionale fiscale che pensa per te</p>
         </div>

@@ -1,4 +1,4 @@
-# Neurora Fiscale (nome provvisorio)
+# VELTRA by Neurora
 
 Piattaforma fiscale per Partita IVA in regime forfettario: fatturazione elettronica, previsione tasse in tempo reale, generazione F24, pre-compilazione dichiarazione dei redditi e commercialista AI.
 

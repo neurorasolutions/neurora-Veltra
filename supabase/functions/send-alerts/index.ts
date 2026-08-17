@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       .join('\n')
 
     const oggetto = `Scadenze fiscali in arrivo (${scadenze.length})`
-    const testo = `Ciao,\n\nqueste sono le scadenze fiscali dei prossimi ${giorniAnticipo} giorni:\n\n${righe}\n\n— Neurora Fiscale`
+    const testo = `Ciao,\n\nqueste sono le scadenze fiscali dei prossimi ${giorniAnticipo} giorni:\n\n${righe}\n\n— VELTRA by Neurora`
 
     // Invio email via Resend
     const resendRes = await fetch('https://api.resend.com/emails', {
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: from || 'Neurora Fiscale <onboarding@resend.dev>',
+        from: from || 'VELTRA by Neurora <onboarding@resend.dev>',
         to: [destinatario],
         subject: oggetto,
         text: testo,

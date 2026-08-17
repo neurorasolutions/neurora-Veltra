@@ -1,5 +1,5 @@
 {
-  "name": "Neurora Fiscale — Alert scadenze via email",
+  "name": "VELTRA by Neurora — Alert scadenze via email",
   "nodes": [
     {
       "parameters": {
@@ -42,7 +42,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"resendApiKey\": \"INSERISCI_LA_TUA_RESEND_API_KEY\",\n  \"destinatario\": \"tua@email.it\",\n  \"giorniAnticipo\": 7,\n  \"from\": \"Neurora Fiscale <onboarding@resend.dev>\"\n}",
+        "jsonBody": "{\n  \"resendApiKey\": \"INSERISCI_LA_TUA_RESEND_API_KEY\",\n  \"destinatario\": \"tua@email.it\",\n  \"giorniAnticipo\": 7,\n  \"from\": \"VELTRA by Neurora <onboarding@resend.dev>\"\n}",
         "options": {}
       },
       "id": "7b2c1a40-0002-4a00-9b00-000000000002",

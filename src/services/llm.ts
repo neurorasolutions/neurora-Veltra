@@ -72,7 +72,7 @@ export async function chatLLM(messages: LLMMessage[], systemPrompt: string): Pro
       // OpenRouter consiglia (facoltativi) questi header per identificare l'app
       if (s.llm.provider === 'openrouter') {
         headers['HTTP-Referer'] = window.location.origin
-        headers['X-Title'] = 'Neurora Fiscale'
+        headers['X-Title'] = 'VELTRA by Neurora'
       }
       const res = await fetch(`${base}/chat/completions`, {
         method: 'POST',

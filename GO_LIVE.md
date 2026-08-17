@@ -117,7 +117,7 @@ npm run preview    # anteprima della build
 
 | Punto | Note |
 |---|---|
-| **Nome prodotto** | "Neurora Fiscale" è un placeholder (D-010). Da decidere in fase di branding. |
+| **Nome prodotto** | ✅ Deciso: "VELTRA by Neurora" (ex "Neurora Fiscale"). |
 | **Palette** | Ora si usano i colori Neurora di default (Q-005). |
 | **REA** | "MT-87391" da confermare su visura camerale aggiornata (la sede è in PV, non MT). |
 | **ATECO secondario** | 62.01.00 da confermare come registrato nel RI. |
