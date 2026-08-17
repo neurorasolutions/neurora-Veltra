@@ -3,6 +3,7 @@ import { useProfilo, useTable } from '../lib/hooks'
 import { Dichiarazione as Dich, F24Doc, Fattura } from '../types'
 import { fmtEuro } from '../engine/fiscale'
 import { compilaQuadroLM } from '../engine/quadroLM'
+import { scaricaPdfQuadroLM } from '../services/pdf'
 
 export default function Dichiarazione() {
   const { profilo } = useProfilo()
@@ -107,7 +108,13 @@ export default function Dichiarazione() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold">Quadro LM — anno d'imposta {anno}</h2>
             <div className="no-print space-x-2">
-              <button className="btn-secondary" onClick={() => window.print()}>🖨 Stampa</button>
+              <button
+                className="btn-secondary"
+                disabled={!profilo}
+                onClick={() => profilo && scaricaPdfQuadroLM(quadro, profilo)}
+              >
+                ⬇ Scarica PDF
+              </button>
               <button className="btn-primary" onClick={salva}>
                 {esistente ? 'Aggiorna dichiarazione' : 'Salva come pre-compilata'}
               </button>

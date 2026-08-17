@@ -135,3 +135,29 @@
 
 ### Planning doc allineato
 - `generazione_f24.md`: formula ravvedimento sprint chiarita (`importo x (0,25/200) x giorni`).
+
+---
+
+## Chiusura progetto (implementazione) — 04/08/2026
+
+### Test automatici
+- Aggiunto **vitest** + 44 test sui motori di calcolo in `tests/` (fiscale, f24, bollo, quadroLM, datiNormativi, fatturapa).
+- Script `npm test` / `npm run test:watch` in `package.json`.
+
+### Fallback CORS Aruba
+- `src/services/sdi.ts`: se la chiamata diretta ad Aruba fallisce per errore di rete/CORS (TypeError), riprova automaticamente via Edge Function `aruba-proxy`.
+- URL proxy derivato da `VITE_SUPABASE_URL` o impostabile manualmente (nuovo campo `aruba.proxyUrl` in Impostazioni).
+
+### Alert email proattivi
+- Nuova Edge Function `supabase/functions/send-alerts`: legge `veltra_scadenze` imminenti e invia email via Resend.
+- Workflow n8n pronto in `n8n/alert-scadenze-workflow.json` (cron giornaliero 08:00).
+
+### PDF reale
+- Nuovo `src/services/pdf.ts` (pdf-lib, import dinamico/code-split): download PDF di F24 e Quadro LM.
+- I pulsanti "Stampa" in F24 e Dichiarazione ora offrono "⬇ Scarica PDF" oltre alla stampa.
+
+### Deploy e documentazione
+- `vercel.json` (SPA rewrite + build Vite).
+- `GO_LIVE.md`: checklist completa per recuperare ogni credenziale/account e deploy.
+- README aggiornato (test, proxy, alert, struttura, GO_LIVE).
+- Rimossi gli script di debug `test_save*.mjs`.

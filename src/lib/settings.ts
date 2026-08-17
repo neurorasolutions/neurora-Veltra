@@ -12,6 +12,9 @@ export interface Settings {
     password: string
     authUrl: string
     apiUrl: string
+    // URL della Supabase Edge Function `aruba-proxy` (fallback CORS).
+    // Se vuoto, viene derivato da VITE_SUPABASE_URL quando disponibile.
+    proxyUrl: string
   }
   // Commercialista AI
   llm: {
@@ -106,6 +109,7 @@ const DEFAULTS: Settings = {
     password: '',
     authUrl: 'https://auth.fatturazioneelettronica.aruba.it',
     apiUrl: 'https://ws.fatturazioneelettronica.aruba.it',
+    proxyUrl: '',
   },
   llm: {
     provider: 'anthropic',

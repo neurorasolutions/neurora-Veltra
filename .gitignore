@@ -6,3 +6,4 @@ dist
 .DS_Store
 .claude
 test_save*.mjs
+supabase/.temp/

@@ -3,6 +3,8 @@
 Piattaforma fiscale per Partita IVA in regime forfettario: fatturazione elettronica, previsione tasse in tempo reale, generazione F24, pre-compilazione dichiarazione dei redditi e commercialista AI.
 
 > Documenti di planning: `00_architettura_e_decisioni.md` + i 6 `.md` di dettaglio. Questo README copre solo l'avvio e la configurazione dell'app.
+>
+> 🚀 **Per mettere in produzione**: segui la checklist in [`GO_LIVE.md`](GO_LIVE.md) (credenziali da recuperare + deploy su Vercel).
 
 ## Avvio rapido
 
@@ -43,7 +45,7 @@ Tutte si configurano nella pagina **Impostazioni** dell'app. Senza chiavi l'app 
 
 Le chiamate dirette dal browser verso Aruba o Fatture in Cloud possono essere bloccate da CORS. In quel caso:
 
-- **Aruba**: usa il pulsante "Scarica XML" e carica il file sul pannello Aruba, oppure instrada le chiamate attraverso una Supabase Edge Function proxy (stessa interfaccia `SDIProvider`, previsto post-MVP).
+- **Aruba**: se la chiamata diretta dal browser fallisce per CORS, l'app riprova **automaticamente** attraverso la Supabase Edge Function `aruba-proxy` (stessa interfaccia `SDIProvider`). In alternativa c'è sempre il pulsante "Scarica XML" + upload manuale sul pannello Aruba.
 - **Fatture in Cloud**: esegui la migrazione una tantum disattivando temporaneamente il controllo CORS o via piccolo proxy locale.
 
 ## Struttura
@@ -51,11 +53,15 @@ Le chiamate dirette dal browser verso Aruba o Fatture in Cloud possono essere bl
 ```
 src/
   engine/          Motori di calcolo deterministici (previsione, F24, bollo, quadro LM, ravvedimento)
-  services/        Integrazioni esterne (XML FatturaPA, Aruba SDI, LLM, Fatture in Cloud)
+  services/        Integrazioni esterne (XML FatturaPA, Aruba SDI, LLM, Fatture in Cloud, PDF)
   lib/             Layer dati (localStorage ↔ Supabase), impostazioni, hook
   pages/           Dashboard, Fatture, Clienti, Previsione, F24, Dichiarazione, Chat, Impostazioni
+tests/             Test automatici (vitest) sui motori di calcolo
 supabase/
   migrations/      Schema SQL multi-tenant-ready + seed dati normativi
+  functions/       Edge Functions: aruba-proxy, send-alerts (alert email), fic-migrate
+n8n/
+  alert-scadenze-workflow.json   Workflow n8n pronto per gli alert email schedulati
 ```
 
 ## Principi (dal planning)
@@ -75,8 +81,9 @@ Il ripristino sovrascrive i dati locali con il file selezionato.
 
 ```bash
 npm run dev      # sviluppo
+npm test         # test automatici sui motori di calcolo
 npm run build    # build produzione (tsc + vite)
 npm run preview  # anteprima build
 ```
 
-Deploy consigliato: Vercel (CI/CD automatico sul push).
+Deploy consigliato: Vercel (CI/CD automatico sul push, `vercel.json` incluso).

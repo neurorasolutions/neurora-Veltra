@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useProfilo, useTable } from '../lib/hooks'
-import { F24Doc, Fattura, Scadenza, TipoF24 } from '../types'
+import { F24Doc, Fattura, ProfiloFiscale, Scadenza, TipoF24 } from '../types'
 import { calcolaPrevisione, fmtEuro, round2 } from '../engine/fiscale'
 import {
   generaF24Giugno,
@@ -9,6 +9,7 @@ import {
   calcolaRavvedimento,
 } from '../engine/f24'
 import { calcolaBolloTrimestri, righeF24Bollo } from '../engine/bollo'
+import { scaricaPdfF24 } from '../services/pdf'
 
 export default function F24Page() {
   const { profilo } = useProfilo()
@@ -73,7 +74,7 @@ export default function F24Page() {
 
   const rav = ravImporto > 0 ? calcolaRavvedimento(ravImporto, ravGiorni) : null
 
-  if (stampa) return <VistaStampa doc={stampa} onBack={() => setStampa(null)} cf={profilo?.cf || ''} />
+  if (stampa) return <VistaStampa doc={stampa} onBack={() => setStampa(null)} profilo={profilo} />
 
   return (
     <div className="space-y-6">
@@ -272,20 +273,29 @@ function etichettaTipo(t: TipoF24): string {
   return t === 'saldo_acconto1' ? 'Saldo + 1° acconto' : t === 'acconto2' ? '2° acconto' : 'Bollo virtuale'
 }
 
-function VistaStampa({ doc, onBack, cf }: { doc: F24Doc; onBack: () => void; cf: string }) {
+function VistaStampa({ doc, onBack, profilo }: { doc: F24Doc; onBack: () => void; profilo: ProfiloFiscale | null }) {
   const erario = doc.righe.filter((r) => r.sezione === 'erario')
   const inps = doc.righe.filter((r) => r.sezione === 'inps')
   return (
     <div className="space-y-4">
       <div className="no-print flex justify-between">
         <button className="btn-secondary" onClick={onBack}>← Indietro</button>
-        <button className="btn-primary" onClick={() => window.print()}>🖨 Stampa / PDF</button>
+        <div className="space-x-2">
+          <button
+            className="btn-primary"
+            disabled={!profilo}
+            onClick={() => profilo && scaricaPdfF24(doc, profilo)}
+          >
+            ⬇ Scarica PDF
+          </button>
+          <button className="btn-secondary" onClick={() => window.print()}>🖨 Stampa</button>
+        </div>
       </div>
       <div className="card max-w-3xl">
         <h1 className="text-xl font-extrabold mb-1">Modello F24 — {etichettaTipo(doc.tipo)}</h1>
         <p className="text-sm text-slate-500 mb-4">
           Anno d'imposta {doc.anno_riferimento} · Scadenza {new Date(doc.data_scadenza).toLocaleDateString('it-IT')} ·
-          Codice fiscale contribuente: <span className="num">{cf}</span>
+          Codice fiscale contribuente: <span className="num">{profilo?.cf || ''}</span>
         </p>
 
         {erario.length > 0 && (

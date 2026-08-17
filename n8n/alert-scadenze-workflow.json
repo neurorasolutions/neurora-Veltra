@@ -1,0 +1,71 @@
+{
+  "name": "Neurora Fiscale — Alert scadenze via email",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 8,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "7b2c1a40-0001-4a00-9b00-000000000001",
+      "name": "Ogni giorno alle 08:00",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [-320, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TUA-PROGETTO.supabase.co/functions/v1/send-alerts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "INSERISCI_LA_TUA_SUPABASE_ANON_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer INSERISCI_LA_TUA_SUPABASE_ANON_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"resendApiKey\": \"INSERISCI_LA_TUA_RESEND_API_KEY\",\n  \"destinatario\": \"tua@email.it\",\n  \"giorniAnticipo\": 7,\n  \"from\": \"Neurora Fiscale <onboarding@resend.dev>\"\n}",
+        "options": {}
+      },
+      "id": "7b2c1a40-0002-4a00-9b00-000000000002",
+      "name": "Invia alert scadenze (Edge Function)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [0, 0]
+    }
+  ],
+  "connections": {
+    "Ogni giorno alle 08:00": {
+      "main": [
+        [
+          {
+            "node": "Invia alert scadenze (Edge Function)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "pinData": {},
+  "versionId": "00000000-0000-0000-0000-000000000001"
+}

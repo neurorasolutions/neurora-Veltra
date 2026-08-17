@@ -273,6 +273,19 @@ export default function Impostazioni() {
               onChange={(e) => setS({ ...s, aruba: { ...s.aruba, apiUrl: e.target.value } })}
             />
           </div>
+          <div className="md:col-span-2">
+            <label className="label">URL proxy (Edge Function, opzionale)</label>
+            <input
+              className="input num"
+              placeholder="https://TUA-PROGETTO.supabase.co/functions/v1/aruba-proxy"
+              value={s.aruba.proxyUrl}
+              onChange={(e) => setS({ ...s, aruba: { ...s.aruba, proxyUrl: e.target.value } })}
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Facoltativo: serve solo se Aruba blocca le chiamate dirette dal browser (CORS). Se lasciato vuoto e
+              VITE_SUPABASE_URL è impostata, l'app usa automaticamente l'Edge Function <code>aruba-proxy</code>.
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button className="btn-primary" onClick={() => salva({ aruba: s.aruba })}>Salva</button>
