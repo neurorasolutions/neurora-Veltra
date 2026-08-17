@@ -69,8 +69,24 @@ export default function Chat() {
       .slice(0, 5)
       .map((s) => `- ${s.data}: ${s.descrizione}${s.importo_stimato ? ` (${fmtEuro(s.importo_stimato)})` : ''}`)
       .join('\n')
+
+    // Versamenti già effettuati (F24 segnati come "pagato")
+    const pagati = f24docs.filter((d) => d.stato === 'pagato')
+    const versatoTotale = pagati.reduce((s, d) => s + (d.totale || 0), 0)
+    const versatoErario = pagati
+      .flatMap((d) => d.righe)
+      .filter((r) => r.sezione === 'erario')
+      .reduce((s, r) => s + (r.importo || 0), 0)
+    const versatoInps = pagati
+      .flatMap((d) => d.righe)
+      .filter((r) => r.sezione === 'inps')
+      .reduce((s, r) => s + (r.importo || 0), 0)
+    const versamenti = pagati.length > 0
+      ? `${pagati.length} F24 "pagati" per un totale di ${fmtEuro(versatoTotale)} (erario ${fmtEuro(versatoErario)} · INPS ${fmtEuro(versatoInps)})`
+      : 'nessun versamento registrato: per tracciarli, segna gli F24 come "Pagato" nella pagina F24'
+
     const f24 = f24docs
-      .slice(0, 5)
+      .slice(0, 10)
       .map((d) => `- F24 ${d.tipo} anno ${d.anno_riferimento}: ${fmtEuro(d.totale)} (${d.stato})`)
       .join('\n')
     return `Profilo: ${profilo.denominazione}, P.IVA ${profilo.piva}, regime forfettario dal ${profilo.data_apertura_piva}.
@@ -85,9 +101,11 @@ Previsione ${anno} (motore deterministico):
 - Totale da accantonare: ${fmtEuro(prev.totaleDovutoStimato)}
 - Residuo soglia 85.000 €: ${fmtEuro(prev.residuoSoglia)}
 
+Versamenti già effettuati: ${versamenti}
+
 Prossime scadenze:\n${prossime || '- nessuna'}
 
-F24 recenti:\n${f24 || '- nessuno'}`
+F24 registrati:\n${f24 || '- nessuno'}`
   }
 
   async function nuovaChat() {
