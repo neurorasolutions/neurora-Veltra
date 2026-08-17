@@ -1,6 +1,6 @@
-// Web search per il commercialista AI: cerca informazioni fiscali in tempo reale
-// usando DuckDuckGo (via Vite proxy in dev, allorigins in prod).
-// I risultati vengono iniettati nel contesto del system prompt.
+// Web search per il commercialista AI: cerca informazioni fiscali in tempo reale.
+// Prova prima DuckDuckGo via allorigins (proxy CORS gratuito); se fallisce,
+// ripiega sulla Supabase Edge Function `ai-proxy` (lato server, sempre funzionante).
 
 export interface SearchResult {
   titolo: string
@@ -9,28 +9,62 @@ export interface SearchResult {
   fonte: string
 }
 
-// Cerca su DuckDuckGo risultati web rilevanti per una query fiscale.
-// Usa allorigins come CORS proxy (funziona in browser senza configurazione).
-export async function webSearch(query: string, limit = 5): Promise<SearchResult[]> {
-  // Aggiungi contesto fiscale italiano alla query
-  const enhancedQuery = `${query} fiscalita Italia 2026`
+function proxyUrl(): string {
+  const base = import.meta.env.VITE_SUPABASE_URL as string | undefined
+  return base ? `${base.replace(/\/+$/, '')}/functions/v1/ai-proxy` : ''
+}
 
+function proxyHeaders(): Record<string, string> {
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (anon) {
+    h.Authorization = `Bearer ${anon}`
+    h.apikey = anon
+  }
+  return h
+}
+
+export async function webSearch(query: string, limit = 5): Promise<SearchResult[]> {
+  try {
+    return await webSearchDiretto(query, limit)
+  } catch (e) {
+    if (proxyUrl()) {
+      return await webSearchProxy(query, limit)
+    }
+    throw e
+  }
+}
+
+async function webSearchDiretto(query: string, limit = 5): Promise<SearchResult[]> {
+  const enhancedQuery = `${query} fiscalita Italia 2026`
   const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
     `https://html.duckduckgo.com/html/?q=${encodeURIComponent(enhancedQuery)}`
   )}`
-
   const res = await fetch(proxyUrl)
   if (!res.ok) throw new Error(`Web search fallita (HTTP ${res.status})`)
   const html = await res.text()
-
   return parseDDGResults(html, limit)
+}
+
+async function webSearchProxy(query: string, limit = 5): Promise<SearchResult[]> {
+  const url = proxyUrl()
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: proxyHeaders(),
+    body: JSON.stringify({ action: 'search', query, limit }),
+  })
+  if (!res.ok) {
+    throw new Error(`Proxy web search HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`)
+  }
+  const data = await res.json()
+  if (data.errore) throw new Error(data.errore)
+  return data.results || []
 }
 
 function parseDDGResults(html: string, limit: number): SearchResult[] {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   const results: SearchResult[] = []
 
-  // DuckDuckGo HTML results: .result blocks with .result__a (title+link) and .result__snippet
   const resultBlocks = doc.querySelectorAll('.result, .web-result')
   resultBlocks.forEach((block) => {
     if (results.length >= limit) return
@@ -38,7 +72,6 @@ function parseDDGResults(html: string, limit: number): SearchResult[] {
     const snippet = block.querySelector('.result__snippet, .result-snippet')?.textContent?.trim()
     if (!link || !link.textContent?.trim()) return
 
-    // DDG wraps links in a redirect; estrai l'URL reale
     const href = link.getAttribute('href') || ''
     const url = extractRealURL(href)
 
@@ -54,7 +87,6 @@ function parseDDGResults(html: string, limit: number): SearchResult[] {
 }
 
 function extractRealURL(ddgHref: string): string {
-  // DDG links: /l/?uddg=ENCODED_URL&rut=...
   if (ddgHref.includes('uddg=')) {
     try {
       const params = new URLSearchParams(ddgHref.split('?')[1] || ddgHref)

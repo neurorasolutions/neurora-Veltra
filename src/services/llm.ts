@@ -1,7 +1,11 @@
-// Commercialista AI — client LLM unificato (Anthropic / OpenAI / Groq).
+// Commercialista AI — client LLM unificato (Anthropic / OpenAI / Groq / OpenRouter / Ollama).
 // Il provider e la chiave API si impostano nella pagina Impostazioni (CA-001).
 // L'AI è un layer consultivo (D-005): i numeri veri arrivano dal motore di
 // calcolo deterministico, passati nel contesto di sistema.
+//
+// Fallback CORS automatico: se la chiamata diretta dal browser fallisce per un
+// errore di rete/CORS (es. Ollama Cloud non supporta CORS), la richiesta viene
+// instradata attraverso la Supabase Edge Function `ai-proxy` (lato server).
 
 import { loadSettings, ModelOption } from '../lib/settings'
 
@@ -23,9 +27,43 @@ export interface LLMMessage {
 export const DISCLAIMER =
   'Le risposte del commercialista AI sono informative e non sostituiscono il parere di un professionista abilitato.'
 
+function isTransportError(e: unknown): boolean {
+  return (
+    e instanceof TypeError ||
+    (e instanceof Error && /failed to fetch|networkerror|load failed|network request failed/i.test(e.message))
+  )
+}
+
+function proxyUrl(): string {
+  const base = import.meta.env.VITE_SUPABASE_URL as string | undefined
+  return base ? `${base.replace(/\/+$/, '')}/functions/v1/ai-proxy` : ''
+}
+
+function proxyHeaders(): Record<string, string> {
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (anon) {
+    h.Authorization = `Bearer ${anon}`
+    h.apikey = anon
+  }
+  return h
+}
+
 export async function chatLLM(messages: LLMMessage[], systemPrompt: string): Promise<string> {
+  try {
+    return await chatLLMDiretto(messages, systemPrompt)
+  } catch (e) {
+    if (isTransportError(e) && proxyUrl()) {
+      return await chatLLMProxy(messages, systemPrompt)
+    }
+    throw e
+  }
+}
+
+async function chatLLMDiretto(messages: LLMMessage[], systemPrompt: string): Promise<string> {
   const s = loadSettings()
-  if (!s.llm.apiKey) {
+  const hasKey = s.llm.provider === 'ollama' ? !!s.ollama.apiKey : !!s.llm.apiKey
+  if (!hasKey) {
     throw new Error(
       'Nessuna chiave API configurata. Vai in Impostazioni → Commercialista AI e inserisci la chiave del provider scelto.'
     )
@@ -88,6 +126,32 @@ export async function chatLLM(messages: LLMMessage[], systemPrompt: string): Pro
       return data.choices?.[0]?.message?.content || ''
     }
   }
+}
+
+async function chatLLMProxy(messages: LLMMessage[], systemPrompt: string): Promise<string> {
+  const s = loadSettings()
+  const url = proxyUrl()
+  if (!url) throw new Error('Proxy AI non configurato: imposta VITE_SUPABASE_URL e deploya la Edge Function ai-proxy.')
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: proxyHeaders(),
+    body: JSON.stringify({
+      action: 'chat',
+      provider: s.llm.provider,
+      apiKey: s.llm.apiKey,
+      ollamaApiKey: s.ollama.apiKey,
+      apiUrl: s.ollama.apiUrl,
+      model: s.llm.model,
+      messages,
+      systemPrompt,
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(`Proxy AI HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`)
+  }
+  const data = await res.json()
+  if (data.errore) throw new Error(data.errore)
+  return data.content || ''
 }
 
 export function buildSystemPrompt(contestoFiscale: string, aggiornamentiNormativi = ''): string {
