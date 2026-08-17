@@ -65,9 +65,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           <div className="text-lg font-extrabold bg-neurora-gradient bg-clip-text text-transparent">
             VELTRA by Neurora
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
-            Regime forfettario · {isSupabaseMode ? 'Supabase' : 'modalit\u00e0 locale'}
-          </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {NAV.map((n) => (
