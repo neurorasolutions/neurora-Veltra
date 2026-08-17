@@ -25,13 +25,18 @@ function proxyHeaders(): Record<string, string> {
 }
 
 export async function webSearch(query: string, limit = 5): Promise<SearchResult[]> {
+  // Preferisce il proxy Edge Function (affidabile); allorigins solo come fallback.
+  if (proxyUrl()) {
+    try {
+      return await webSearchProxy(query, limit)
+    } catch {
+      // prova il metodo diretto
+    }
+  }
   try {
     return await webSearchDiretto(query, limit)
-  } catch (e) {
-    if (proxyUrl()) {
-      return await webSearchProxy(query, limit)
-    }
-    throw e
+  } catch {
+    return []
   }
 }
 

@@ -14,7 +14,7 @@ import { fetchOpenRouterModels } from '../services/llm'
 import { importaDaFattureInCloud } from '../services/fattureInCloud'
 import { arubaProvider } from '../services/sdi'
 import { DATI_NORMATIVI_2026 } from '../engine/datiNormativi'
-import { isSupabaseMode } from '../lib/db'
+import { isSupabaseMode, supabase, getActiveTenantId } from '../lib/db'
 import { fetchAllRSS, RSS_SOURCES, countNews, recentNews } from '../services/ragNews'
 
 export default function Impostazioni() {
@@ -162,6 +162,21 @@ export default function Impostazioni() {
     if (!profilo) return
     setBusy(true)
     setMsg('Migrazione da Fatture in Cloud in corso…')
+    // Persisti le credenziali FiC lato server (per il sync automatico settimanale)
+    if (supabase) {
+      try {
+        const tid = getActiveTenantId()
+        await supabase.from('veltra_impostazioni').upsert(
+          [
+            { tenant_id: tid, chiave: 'fic_access_token', valore: sRef.current.fattureInCloud.accessToken },
+            { tenant_id: tid, chiave: 'fic_company_id', valore: sRef.current.fattureInCloud.companyId },
+          ],
+          { onConflict: 'tenant_id,chiave' }
+        )
+      } catch (e) {
+        console.warn('[Impostazioni] persistenza credenziali FiC lato server fallita:', e)
+      }
+    }
     try {
       const atecoDefault = profilo.ateco_codici.find((a) => a.prevalente)?.codice || ''
       const res = await importaDaFattureInCloud(atecoDefault)

@@ -43,8 +43,8 @@ function extractRealURL(href: string): string {
 
 function parseDDG(html: string, limit: number) {
   const results: { titolo: string; url: string; snippet: string; fonte: string }[] = []
-  const linkRe = /class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
-  const snippetRe = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g
+  const linkRe = /class="result-link"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
+  const snippetRe = /class="result-snippet"[^>]*>([\s\S]*?)<\/(?:td|a)>/g
 
   const snippets: string[] = []
   let m: RegExpExecArray | null
@@ -126,7 +126,8 @@ Deno.serve(async (req) => {
     if (body.action === 'search') {
       const { query, limit = 5 } = body
       const enhanced = `${query} fiscalita Italia 2026`
-      const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(enhanced)}`, {
+      // DDG "lite" è più tollerante verso lo scraping server-side rispetto a html.duckduckgo.com
+      const res = await fetch(`https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(enhanced)}`, {
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
