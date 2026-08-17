@@ -29,7 +29,10 @@ export interface RisultatoMigrazione {
 }
 
 function isTransportError(e: unknown): boolean {
-  return e instanceof TypeError
+  return (
+    e instanceof TypeError ||
+    (e instanceof Error && /failed to fetch|networkerror|load failed|network request failed/i.test(e.message))
+  )
 }
 
 function edgeUrl(): string {
@@ -68,9 +71,10 @@ async function paginate<T>(path: string, mapper: (d: any) => T): Promise<T[]> {
   return out
 }
 
-// Esegue una paginazione senza far fallire l'intera migrazione: in caso di errore
-// restituisce lista vuota + messaggio, così i tipi di documento con permessi
-// mancanti vengono saltati (e segnalati) invece di bloccare tutto.
+// Esegue una paginazione senza far fallire l'intera migrazione: gli errori di
+// permesso (403) o altri errori HTTP vengono segnalati e il tipo di documento
+// viene saltato. Gli errori di RETE/CORS invece vengono rilanciati, così
+// importaDaFattureInCloud può passare al fallback via Edge Function.
 async function tryPaginate<T>(
   label: string,
   path: string,
@@ -79,6 +83,7 @@ async function tryPaginate<T>(
   try {
     return { items: await paginate(path, mapper) }
   } catch (e) {
+    if (isTransportError(e)) throw e
     return { items: [], errore: chiarisciErrore(label, e) }
   }
 }
